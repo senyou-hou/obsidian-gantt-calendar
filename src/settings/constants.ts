@@ -67,7 +67,7 @@ export const DEFAULT_SETTINGS: GanttCalendarSettings = {
 	weekViewTagOperator: 'OR',
 	// WeekView 卡片显示控制
 	weekViewShowCheckbox: true,
-	weekViewShowTags: true,
+	weekViewShowTags: false,
 	weekViewShowPriority: false,
 	weekViewShowTicktick: false,
 
@@ -79,17 +79,17 @@ export const DEFAULT_SETTINGS: GanttCalendarSettings = {
 	monthViewTagOperator: 'OR',
 	// MonthView 卡片显示控制
 	monthViewShowCheckbox: true,
-	monthViewShowTags: true,
+	monthViewShowTags: false,
 	monthViewShowPriority: false,
 	monthViewShowTicktick: false,
 
 	// 侧边栏卡片显示控制
 	sidebarShowCheckbox: true,
-	sidebarShowTags: true,
+	sidebarShowTags: false,
 	sidebarShowPriority: false,
 	sidebarShowTicktick: false,
 	sidebarShowFileLocation: false,
-	sidebarShowDueDate: true,
+	sidebarShowDueDate: false,
 
 	// YearView
 	yearViewSelectedTags: [],
