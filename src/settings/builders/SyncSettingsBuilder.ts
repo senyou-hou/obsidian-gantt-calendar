@@ -358,11 +358,9 @@ export class SyncSettingsBuilder extends BaseBuilder {
 		addSetting(setting =>
 			setting.setName('App ID')
 				.setDesc(i18n.t('settings.sync.oauth.appId.description'))
-				.addText(text => text
-					 
-					// eslint-disable-next-line obsidianmd/ui/sentence-case -- 凭据占位符
-					.setPlaceholder('cli_xxxxxxxxxxxxx')
-					.setValue(syncConfig.api?.clientId || syncConfig.api?.appId || '')
+			.addText(text => text
+				.setPlaceholder('Your app ID')
+				.setValue(syncConfig.api?.clientId || syncConfig.api?.appId || '')
 					.onChange(async (value: string) => {
 						this.updateSyncConfig({
 							api: { ...syncConfig.api, clientId: value, appId: value }
@@ -375,11 +373,9 @@ export class SyncSettingsBuilder extends BaseBuilder {
 		addSetting(setting =>
 			setting.setName('App secret')
 				.setDesc(i18n.t('settings.sync.oauth.appSecret.description'))
-				.addText(text => text
-					 
-					// eslint-disable-next-line obsidianmd/ui/sentence-case -- 凭据占位符
-					.setPlaceholder('xxxxxxxxxxxxxxxx')
-					.setValue(syncConfig.api?.clientSecret || syncConfig.api?.appSecret || '')
+			.addText(text => text
+				.setPlaceholder('Your app secret')
+				.setValue(syncConfig.api?.clientSecret || syncConfig.api?.appSecret || '')
 					.onChange(async (value: string) => {
 						this.updateSyncConfig({
 							api: { ...syncConfig.api, clientSecret: value, appSecret: value }
@@ -398,11 +394,9 @@ export class SyncSettingsBuilder extends BaseBuilder {
 		addSetting(setting =>
 			setting.setName(i18n.t('settings.sync.oauth.redirectUri.label'))
 				.setDesc(i18n.t('settings.sync.oauth.redirectUri.description'))
-				.addText(text => text
-					 
-					// eslint-disable-next-line obsidianmd/ui/sentence-case -- URL 占位符,大小写敏感
-					.setPlaceholder('https://open.feishu.cn/api-explorer/loading')
-					.setValue(syncConfig.api?.redirectUri || FeishuOAuth.getDefaultRedirectUri())
+			.addText(text => text
+				.setPlaceholder('Enter redirect URL')
+				.setValue(syncConfig.api?.redirectUri || FeishuOAuth.getDefaultRedirectUri())
 					.onChange(async (value: string) => {
 						this.updateSyncConfig({
 							api: { ...syncConfig.api, redirectUri: value }
@@ -1335,3 +1329,4 @@ export class SyncSettingsBuilder extends BaseBuilder {
 		}
 	}
 }
+/* eslint-enable @typescript-eslint/no-misused-promises */

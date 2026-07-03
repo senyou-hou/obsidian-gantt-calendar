@@ -225,12 +225,12 @@ export function parseTasksFromLines(
     globalTaskFilter?: string
 ): GCTask[] {
     // 创建一个模拟的 TFile 对象（用于解析，不是真实的文件操作）
-     
     const mockFile = {
         path: filePath,
         basename: fileName,
-    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- 构造 mock TFile 用于离线解析(非类型收窄)
-    } as TFile;
+    // 构造 mock 对象用于离线解析，避免直接 TFile 类型断言
+    // eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast
+    } as unknown as TFile;
 
     return parseTasksFromListItems(mockFile, lines, listItems, enabledFormats, globalTaskFilter);
 }

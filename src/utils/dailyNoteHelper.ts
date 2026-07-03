@@ -293,12 +293,11 @@ async function insertTaskToFile(
  */
 function serializeNewTask(taskData: CreateTaskData, app: App): string {
 	// Access Obsidian internal plugin API (not in public types)
-	/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
-	const plugin: any = (app as any).plugins.plugins['gantt-calendar'];
-	const globalFilter: string = plugin?.settings?.globalTaskFilter || '';
-	const enabledFormats: string[] = plugin?.settings?.enabledTaskFormats || ['tasks'];
+	const plugin = (app as unknown as Record<string, Record<string, Record<string, unknown>>>).plugins.plugins['gantt-calendar'];
+	const settings = plugin?.settings as Record<string, unknown> | undefined;
+	const globalFilter: string = (settings?.globalTaskFilter as string) || '';
+	const enabledFormats: string[] = (settings?.enabledTaskFormats as string[]) || ['tasks'];
 	const format = enabledFormats.includes('dataview') ? 'dataview' : 'tasks';
-	/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
 
 	const parts: string[] = [];
 
