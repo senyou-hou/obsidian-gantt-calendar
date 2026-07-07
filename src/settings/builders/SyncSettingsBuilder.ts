@@ -1329,4 +1329,4 @@ export class SyncSettingsBuilder extends BaseBuilder {
 		}
 	}
 }
-/* eslint-enable @typescript-eslint/no-misused-promises */
+/* eslint-enable @typescript-eslint/no-misused-promises -- 末尾：恢复对 settings 回调中 async 函数的检查 */
