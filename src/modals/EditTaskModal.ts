@@ -723,7 +723,7 @@ class EditTaskModal extends BaseTaskModal {
 	 */
 	private getAllTasks(): GCTask[] {
 		// Access Obsidian internal plugin API (not in public types)
-		const plugin = (this.app as unknown as Record<string, Record<string, Record<string, unknown>>>).plugins.plugins['gantt-calendar'];
+		const plugin = (this.app as unknown as Record<string, Record<string, Record<string, unknown>>>).plugins.plugins['gantt-calendar'] as Record<string, unknown> | undefined;
 		if (plugin?.taskCache) {
 			return (plugin.taskCache as { getAllTasks: () => GCTask[] }).getAllTasks();
 		}
