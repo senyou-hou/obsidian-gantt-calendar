@@ -9,16 +9,27 @@ import { sortTasks } from '../tasks/taskSorter';
 import { TaskCardComponent, WeekViewConfig, type TaskCardConfig } from '../components/TaskCard';
 import { Logger } from '../utils/logger';
 import { TooltipManager } from '../utils/tooltipManager';
-import { WeekViewClasses, setCssProps } from '../utils/bem';
+import { WeekViewClasses, TaskCardClasses, setCssProps } from '../utils/bem';
 import { toISOStringLocal, createDate } from '../dateUtils/timezone';
 import { generateVirtualInstances } from '../tasks/virtualTaskGenerator';
 import { renderCurrentTimeLine } from '../utils/currentTimeLine';
 import { i18n } from '../i18n/i18n';
-import { DragDropManager, setupQuickCreateForSlot, type QuickCreateConfig } from '../utils/timelineInteractions';
+import { DragDropManager, setupQuickCreateForSlot, findTaskCard, type QuickCreateConfig } from '../utils/timelineInteractions';
 
 /**
- * 周视图渲染器
+ * 时间轴模式下单日任务容器引用
  */
+interface TimelineDaySlots {
+	hourTasks: HTMLElement[];
+	alldayTasks: HTMLElement;
+}
+
+/** 拖拽抑制记录有效期（毫秒），超时后不再抑制刷新 */
+const SUPPRESSION_TTL_MS = 2000;
+
+	/**
+	 * 周视图渲染器
+	 */
 export class WeekViewRenderer extends BaseViewRenderer {
 	// 时间轴模式持久化标志（一旦激活，会话内保持）
 	private timelineActive: boolean = false;
@@ -26,11 +37,15 @@ export class WeekViewRenderer extends BaseViewRenderer {
 	// 当前渲染日期（供 refreshTasks 使用）
 	private currentDate: Date = new Date();
 
-	// 滚动位置缓存（时间轴模式增量刷新时保存/恢复）
-	private savedScrollTop: number = 0;
-
 	// 当前拖拽悬停行的行元素数组（用于清除上一行的高亮）
 	private dragOverRowEls: HTMLElement[] | null = null;
+
+	// 拖拽乐观更新抑制表：filePath → 拖拽发生时间戳。
+	// drop 时已完成乐观 DOM 移动，随后文件写入触发的刷新应被抑制，避免全量重建导致画面跳动/滚动条复位
+	private dragSuppression: Map<string, number> = new Map();
+
+	// 时间轴模式下每个日期的任务容器引用（key: 本地日期字符串），用于按日增量刷新
+	private timelineDaySlots: Map<string, TimelineDaySlots> = new Map();
 
 	// 时间轴专用配置（启用拖拽）
 	private timelineTaskConfig: TaskCardConfig = {
@@ -85,15 +100,17 @@ export class WeekViewRenderer extends BaseViewRenderer {
 		weekEnd.setHours(0, 0, 0, 0);
 
 		// 预先检测是否需要时间轴模式
-		const allRealTasks = this.applyTagFilter(
-			this.applyStatusFilter(this.plugin.taskCache.getAllTasks())
-		);
+		const allRealTasks = this.getFilteredRealTasks();
 		const hasTimed = this.hasTimedTasks(allRealTasks, weekStart, weekEnd);
 		if (hasTimed) this.timelineActive = true;
 		const useTimeline = this.timelineActive;
 
 		// 保存当前渲染日期
 		this.currentDate = new Date(currentDate);
+
+		// 全量渲染会重建 DOM：容器引用失效，拖拽抑制记录清空
+		this.timelineDaySlots.clear();
+		this.dragSuppression.clear();
 
 		// 预生成整周的虚拟周期实例
 		const allVirtualInstances = generateVirtualInstances(
@@ -191,6 +208,14 @@ export class WeekViewRenderer extends BaseViewRenderer {
 
 				this.setupDragDropForTimeSlot(slot, h, day.date, rowElements[h]);
 			}
+		});
+
+		// 记录每个日期的任务容器引用（按日增量刷新使用）
+		weekData.days.forEach((day, dayIdx) => {
+			this.timelineDaySlots.set(toISOStringLocal(day.date), {
+				hourTasks: slotContainers[dayIdx],
+				alldayTasks: alldaySlotContainers[dayIdx],
+			});
 		});
 
 		// 填充任务到对应时间格
@@ -351,7 +376,7 @@ export class WeekViewRenderer extends BaseViewRenderer {
 			onClick: (task) => {
 				const tooltipManager = TooltipManager.getInstance(this.plugin);
 				tooltipManager.hide();
-				this.refreshTasks();
+				this.refreshTasks(task.filePath);
 			},
 		}).render();
 	}
@@ -394,6 +419,12 @@ export class WeekViewRenderer extends BaseViewRenderer {
 
 			const dateFieldName = this.plugin.settings.dateFilterField || 'dueDate';
 
+			const alldayTasks = slot.querySelector(`.${WeekViewClasses.elements.alldayTasks}`) as HTMLElement;
+			let revertOptimisticMove: (() => void) | null = null;
+			if (alldayTasks) {
+				revertOptimisticMove = this.optimisticMoveTo(taskId, sourceTask.filePath, alldayTasks, targetDate);
+			}
+
 			void (async () => {
 				try {
 					this.clearTaskTooltips();
@@ -414,6 +445,7 @@ export class WeekViewRenderer extends BaseViewRenderer {
 
 					Logger.debug('WeekView', 'Task set to all-day via drag-drop', { taskId, targetDate });
 				} catch (error) {
+					revertOptimisticMove?.();
 					Logger.error('WeekView', 'Error updating task to all-day:', error);
 					new Notice(i18n.t('views.dayView.updateTaskFailed'));
 				}
@@ -429,6 +461,12 @@ export class WeekViewRenderer extends BaseViewRenderer {
 			targets: rowEls,
 			highlightClass: WeekViewClasses.modifiers.dragOver,
 			logTag: 'WeekView',
+			onDropAccepted: ({ taskId, sourceTask }) => {
+				const tasksEl = slot.querySelector(`.${WeekViewClasses.elements.timeTasks}`) as HTMLElement;
+				if (tasksEl) {
+					return this.optimisticMoveTo(taskId, sourceTask.filePath, tasksEl, targetDate) ?? undefined;
+				}
+			},
 		});
 		dragDropManager.setupForSlot(slot, hour, targetDate, this.app, this.plugin);
 	}
@@ -445,42 +483,344 @@ export class WeekViewRenderer extends BaseViewRenderer {
 
 	/**
 	 * 增量刷新
+	 * @param filePath 触发本次刷新的变更文件路径（可选）
 	 */
-	public refreshTasks(): void {
+	public refreshTasks(filePath?: string): void {
 		const container = activeDocument.querySelector('.gc-view.gc-view--week') as HTMLElement;
 		if (!container) return;
 
+		this.pruneSuppression();
 		const isTimeline = container.classList.contains(WeekViewClasses.modifiers.timeline);
 
+		Logger.debug('WeekView', `refreshTasks ENTER filePath=${filePath ?? '(none)'} isTimeline=${isTimeline} suppressionKeys=[${Array.from(this.dragSuppression.keys()).join(', ')}]`);
+
+		// 拖拽乐观 DOM 移动已完成：文件写入触发的这次刷新无需重渲染
+		if (this.consumeSuppression(filePath)) {
+			Logger.debug('WeekView', 'refreshTasks SUPPRESSED (drag optimistic move already applied)');
+			return;
+		}
+
 		if (isTimeline) {
-			// 时间轴模式需要完全重新渲染
-			// 真正的滚动容器是 .gc-week-view__tasks-grid（CSS overflow-y: auto）
-			const tasksGrid = container.querySelector('.gc-week-view__tasks-grid') as HTMLElement;
-			if (tasksGrid) {
-				this.savedScrollTop = tasksGrid.scrollTop;
+			// 优先按日增量刷新，避免重建整个时间轴网格
+			if (filePath && this.refreshTimelineTargeted(filePath)) {
+				Logger.debug('WeekView', 'refreshTasks -> refreshTimelineTargeted (incremental)');
+				return;
 			}
-			const viewContainer = container.parentElement;
-			if (viewContainer) {
-				this.render(viewContainer, this.currentDate);
+			Logger.debug('WeekView', 'refreshTasks -> fullRenderWithScrollPreservation (timeline)');
+			this.fullRenderWithScrollPreservation(container);
+			return;
+		}
+
+		// 扁平列表模式：若出现了定时任务则激活时间轴模式
+		const { weekStart, weekEnd } = this.getCurrentWeekRange();
+		if (this.hasTimedTasks(this.getFilteredRealTasks(), weekStart, weekEnd)) {
+			this.timelineActive = true;
+			Logger.debug('WeekView', 'refreshTasks -> fullRenderWithScrollPreservation (flat->timeline switch)');
+			this.fullRenderWithScrollPreservation(container);
+			return;
+		}
+
+		Logger.debug('WeekView', 'refreshTasks -> refreshFlatColumns (incremental)');
+		this.refreshFlatColumns(container, filePath);
+	}
+
+	/**
+	 * 获取当前过滤条件下的真实任务（不含虚拟实例）
+	 */
+	private getFilteredRealTasks(): GCTask[] {
+		return this.applyTagFilter(
+			this.applyStatusFilter(this.plugin.taskCache.getAllTasks())
+		);
+	}
+
+	/**
+	 * 当前显示周的起止日期
+	 */
+	private getCurrentWeekRange(): { weekStart: Date; weekEnd: Date } {
+		const weekData = getWeekOfDate(this.currentDate, this.currentDate.getFullYear(), !!(this.plugin?.settings?.startOnMonday));
+		const weekStart = new Date(weekData.days[0].date);
+		weekStart.setHours(0, 0, 0, 0);
+		const weekEnd = new Date(weekData.days[6].date);
+		weekEnd.setHours(0, 0, 0, 0);
+		return { weekStart, weekEnd };
+	}
+
+	/**
+	 * 当前显示周包含的日期字符串集合（用于判断任务是否落在本周）
+	 */
+	private getCurrentWeekDateStrings(): Set<string> {
+		const weekData = getWeekOfDate(this.currentDate, this.currentDate.getFullYear(), !!(this.plugin?.settings?.startOnMonday));
+		return new Set(weekData.days.map(d => toISOStringLocal(d.date)));
+	}
+
+	/**
+	 * 登记拖拽抑制：该文件下一次由事件链触发的刷新将被跳过
+	 */
+	private suppressRefreshFor(filePath: string): void {
+		this.dragSuppression.set(filePath, Date.now());
+	}
+
+	/**
+	 * 消费一次拖拽抑制
+	 */
+	private consumeSuppression(filePath?: string): boolean {
+		if (!filePath) return false;
+		const ts = this.dragSuppression.get(filePath);
+		if (ts === undefined) return false;
+		this.dragSuppression.delete(filePath);
+		return Date.now() - ts <= SUPPRESSION_TTL_MS;
+	}
+
+	/**
+	 * 清理过期的拖拽抑制记录
+	 */
+	private pruneSuppression(): void {
+		const now = Date.now();
+		for (const [path, ts] of this.dragSuppression) {
+			if (now - ts > SUPPRESSION_TTL_MS) {
+				this.dragSuppression.delete(path);
 			}
-			// 恢复滚动位置：render 重建 DOM 后需要重新查找 tasksGrid
-			const newTasksGrid = viewContainer?.querySelector('.gc-week-view__tasks-grid') as HTMLElement;
-			if (newTasksGrid) {
-				window.requestAnimationFrame(() => {
-					newTasksGrid.scrollTop = this.savedScrollTop;
-				});
+		}
+	}
+
+	/**
+	 * 当前周视图根容器
+	 */
+	private findWeekContainer(): HTMLElement | null {
+		const container = activeDocument.querySelector('.gc-view.gc-view--week');
+		return container instanceof HTMLElement ? container : null;
+	}
+
+	/**
+	 * 乐观 DOM 移动：drop 时同步把被拖拽卡片移动到目标容器，
+	 * 并登记抑制随后由文件变更事件链触发的全量刷新。
+	 * @returns 回滚函数（文件写入失败时调用）；移动未执行时返回 null
+	 */
+	private optimisticMoveTo(taskId: string, filePath: string, targetContainer: HTMLElement, targetDate: Date): (() => void) | null {
+		const weekRoot = this.findWeekContainer();
+		if (!weekRoot || !targetContainer.isConnected) {
+			Logger.debug('WeekView', `optimisticMoveTo SKIP: weekRoot=${!!weekRoot} targetConnected=${targetContainer.isConnected}`);
+			return null;
+		}
+
+		const card = findTaskCard(weekRoot, taskId);
+		if (!card) {
+			Logger.debug('WeekView', `optimisticMoveTo SKIP: card not found for taskId=${taskId}`);
+			return null;
+		}
+
+		const sourceParent = card.parentElement;
+		const sourceNextSibling = card.nextSibling;
+		const oldTargetDateAttr = card.dataset.targetDate;
+		const newTargetDateAttr = toISOStringLocal(targetDate);
+
+		if (sourceParent !== targetContainer) {
+			targetContainer.appendChild(card);
+		}
+		card.dataset.targetDate = newTargetDateAttr;
+		this.suppressRefreshFor(filePath);
+		Logger.debug('WeekView', `optimisticMoveTo OK taskId=${taskId} filePath=${filePath} moved=${sourceParent !== targetContainer}`);
+
+		this.fixTargetPlaceholders(targetContainer);
+		if (sourceParent && sourceParent !== targetContainer) {
+			this.fixSourcePlaceholders(sourceParent, oldTargetDateAttr);
+		}
+
+		return () => {
+			this.dragSuppression.delete(filePath);
+			if (!card.isConnected) return;
+			if (sourceParent && sourceParent.isConnected && card.parentElement !== sourceParent) {
+				sourceParent.insertBefore(card, sourceNextSibling);
 			}
-		} else {
-			// 扁平列表模式增量刷新
-			const taskColumns = container.querySelectorAll('.gc-week-view__tasks-column');
-			taskColumns.forEach((column) => {
-				const dateStr = (column as HTMLElement).dataset.date;
-				if (dateStr) {
-					const date = createDate(dateStr);
-					void this.loadWeekViewTasks(column as HTMLElement, date);
+			card.dataset.targetDate = oldTargetDateAttr;
+			this.fixTargetPlaceholders(sourceParent ?? targetContainer);
+			if (sourceParent !== targetContainer) {
+				this.fixSourcePlaceholders(targetContainer, newTargetDateAttr);
+			}
+		};
+	}
+
+	/**
+	 * 任务被移动进目标容器后，清理目标容器中不应保留的占位元素
+	 */
+	private fixTargetPlaceholders(targetContainer: HTMLElement): void {
+		if (targetContainer.classList.contains(WeekViewClasses.elements.timeTasks)) {
+			// “+” 快速创建按钮挂载在父级时间格上
+			targetContainer.parentElement?.querySelector(`.${WeekViewClasses.elements.slotCreate}`)?.remove();
+		} else if (targetContainer.classList.contains(WeekViewClasses.elements.tasksColumn)) {
+			targetContainer.querySelector(`.${WeekViewClasses.elements.empty}`)?.remove();
+		}
+	}
+
+	/**
+	 * 任务被移出源容器后，按需恢复源容器占位（空时间格的 “+”、空列的 “无任务”）
+	 */
+	private fixSourcePlaceholders(sourceParent: HTMLElement, sourceDate?: string): void {
+		if (sourceParent.classList.contains(WeekViewClasses.elements.timeTasks)) {
+			if (sourceParent.querySelector(`.${TaskCardClasses.block}`)) return;
+			const slot = sourceParent.parentElement;
+			if (!slot || !slot.classList.contains(WeekViewClasses.elements.timeSlot)) return;
+			if (slot.querySelector(`.${WeekViewClasses.elements.slotCreate}`)) return;
+			const gridRow = parseInt(slot.style.gridRow, 10);
+			if (!Number.isFinite(gridRow) || !sourceDate) return;
+			this.setupQuickCreateForSlot(slot, gridRow - 3, createDate(sourceDate));
+		} else if (sourceParent.classList.contains(WeekViewClasses.elements.tasksColumn)) {
+			if (sourceParent.querySelector(`.${TaskCardClasses.block}`)) return;
+			if (sourceParent.querySelector(`.${WeekViewClasses.elements.empty}`)) return;
+			sourceParent.createEl('div', { text: i18n.t('common.noTasks'), cls: WeekViewClasses.elements.empty });
+		}
+	}
+
+	/**
+	 * 计算某文件变更所影响的日期集合（本地日期字符串）。
+	 * 覆盖两类变化：旧 DOM 中该文件卡片所在的日期（卡片可能被移除/移走），
+	 * 以及新数据中该文件任务落入本周的日期（任务可能新增/移入）。
+	 * 周期性任务会波及整周（其虚拟实例分布在多天）。
+	 */
+	private computeAffectedDayDates(root: HTMLElement, filePath: string): Set<string> {
+		const dates = new Set<string>();
+		const weekDates = this.getCurrentWeekDateStrings();
+
+		const cards = root.querySelectorAll('[data-task-id]');
+		for (let i = 0; i < cards.length; i++) {
+			const el = cards[i] as HTMLElement;
+			const id = el.dataset.taskId || '';
+			if (id.startsWith(filePath + ':') && el.dataset.targetDate) {
+				dates.add(el.dataset.targetDate);
+			}
+		}
+
+		const dateField = this.plugin.settings.dateFilterField || 'dueDate';
+		for (const task of this.getFilteredRealTasks()) {
+			if (task.filePath !== filePath) continue;
+			if (task.repeat) {
+				weekDates.forEach(d => dates.add(d));
+				continue;
+			}
+			const dateValue = getTaskDateField(task, dateField);
+			if (!dateValue) continue;
+			const taskDate = new Date(dateValue);
+			if (isNaN(taskDate.getTime())) continue;
+			const key = toISOStringLocal(taskDate);
+			if (weekDates.has(key)) {
+				dates.add(key);
+			}
+		}
+		return dates;
+	}
+
+	/**
+	 * 时间轴模式按日增量刷新：只重建受影响日期的任务格，时间网格/header/滚动位置保持不变
+	 * @returns 是否已完成处理（false 表示无法增量，需回退全量渲染）
+	 */
+	private refreshTimelineTargeted(filePath: string): boolean {
+		if (this.timelineDaySlots.size === 0) return false;
+
+		const weekRoot = this.findWeekContainer();
+		if (!weekRoot) return false;
+
+		const affectedDates = this.computeAffectedDayDates(weekRoot, filePath);
+		if (affectedDates.size === 0) return true;
+
+		const allRealTasks = this.getFilteredRealTasks();
+		const dateField = this.plugin.settings.dateFilterField || 'dueDate';
+		const { weekStart, weekEnd } = this.getCurrentWeekRange();
+		const allVirtualInstances = generateVirtualInstances(
+			allRealTasks, weekStart, weekEnd, dateField, this.plugin.settings.recurringTaskDisplayLimit ?? 5
+		);
+
+		for (const dateStr of affectedDates) {
+			const daySlots = this.timelineDaySlots.get(dateStr);
+			if (!daySlots) continue;
+
+			const dayDate = createDate(dateStr);
+
+			for (const tasksEl of daySlots.hourTasks) {
+				tasksEl.parentElement?.querySelector(`.${WeekViewClasses.elements.slotCreate}`)?.remove();
+				tasksEl.empty();
+			}
+			daySlots.alldayTasks.empty();
+
+			this.populateTimelineSlots(daySlots.hourTasks, daySlots.alldayTasks, dayDate, allRealTasks, allVirtualInstances, dateField);
+
+			daySlots.hourTasks.forEach(tasksEl => {
+				if (tasksEl.children.length === 0) {
+					const slot = tasksEl.parentElement;
+					if (!slot) return;
+					const gridRow = parseInt(slot.style.gridRow, 10);
+					if (Number.isFinite(gridRow)) {
+						this.setupQuickCreateForSlot(slot, gridRow - 3, dayDate);
+					}
 				}
 			});
 		}
+		return true;
+	}
+
+	/**
+	 * 扁平列表模式按列增量刷新：仅重建受影响的日期列
+	 */
+	private refreshFlatColumns(container: HTMLElement, filePath?: string): void {
+		const affectedDates = filePath ? this.computeAffectedDayDates(container, filePath) : null;
+		const taskColumns = container.querySelectorAll(`.${WeekViewClasses.elements.tasksColumn}`);
+		taskColumns.forEach((column) => {
+			const colEl = column as HTMLElement;
+			const dateStr = colEl.dataset.date;
+			if (!dateStr) return;
+			if (affectedDates && !affectedDates.has(dateStr)) return;
+			void this.loadWeekViewTasks(colEl, createDate(dateStr));
+		});
+	}
+
+	/**
+	 * 从周视图容器出发，查找实际承担滚动的元素
+	 * （时间轴优先检查 tasks-grid，否则向上查找最近的可滚动祖先）
+	 */
+	private findScrollContainer(container: HTMLElement): HTMLElement | null {
+		const tasksGrid = container.querySelector(`.${WeekViewClasses.elements.tasksGrid}`) as HTMLElement;
+		if (tasksGrid && tasksGrid.scrollHeight > tasksGrid.clientHeight + 1) {
+			const overflowY = activeWindow.getComputedStyle(tasksGrid).overflowY;
+			if (overflowY === 'auto' || overflowY === 'scroll') {
+				return tasksGrid;
+			}
+		}
+		let el: HTMLElement | null = container;
+		while (el) {
+			const style = activeWindow.getComputedStyle(el);
+			if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 1) {
+				return el;
+			}
+			el = el.parentElement;
+		}
+		return null;
+	}
+
+	/**
+	 * 必须全量重渲染时，保存并同步恢复真实滚动容器的位置（同步 + rAF 双保险）
+	 */
+	private fullRenderWithScrollPreservation(container: HTMLElement): void {
+		const scrollEl = this.findScrollContainer(container);
+		const savedScrollTop = scrollEl ? scrollEl.scrollTop : 0;
+		Logger.debug('WeekView', `fullRender BEFORE savedScrollTop=${savedScrollTop} scrollEl=${scrollEl ? scrollEl.className : '(null)'}`);
+
+		const viewContainer = container.parentElement;
+		if (!viewContainer) return;
+
+		this.render(viewContainer, this.currentDate);
+
+		if (!scrollEl || savedScrollTop <= 0) return;
+
+		const restore = () => {
+			const newRoot = viewContainer.querySelector('.gc-view.gc-view--week') as HTMLElement;
+			if (!newRoot) return;
+			const target = this.findScrollContainer(newRoot);
+			if (target) {
+				target.scrollTop = savedScrollTop;
+				Logger.debug('WeekView', `fullRender AFTER restored scrollTop=${target.scrollTop} target=${target.className}`);
+			}
+		};
+		restore();
+		window.requestAnimationFrame(restore);
 	}
 
 	/**
@@ -520,6 +860,8 @@ export class WeekViewRenderer extends BaseViewRenderer {
 
 			const dateFieldName = this.plugin.settings.dateFilterField || 'dueDate';
 
+			const revertOptimisticMove = this.optimisticMoveTo(taskId, sourceTask.filePath, column, targetDate);
+
 			void (async () => {
 				try {
 					this.clearTaskTooltips();
@@ -532,6 +874,7 @@ export class WeekViewRenderer extends BaseViewRenderer {
 					);
 					Logger.debug('WeekView', 'Task drag-drop update successful', { taskId, dateField: dateFieldName, targetDate });
 				} catch (error) {
+					revertOptimisticMove?.();
 					Logger.error('WeekView', 'Error updating task date:', error);
 					new Notice(i18n.t('views.dayView.updateDateFailed'));
 				}
@@ -620,7 +963,7 @@ export class WeekViewRenderer extends BaseViewRenderer {
 			onClick: (task) => {
 				const tooltipManager = TooltipManager.getInstance(this.plugin);
 				tooltipManager.hide();
-				this.refreshTasks();
+				this.refreshTasks(task.filePath);
 			},
 		}).render();
 	}

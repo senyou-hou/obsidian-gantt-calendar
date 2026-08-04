@@ -42,8 +42,9 @@ export abstract class BaseViewRenderer {
 	/**
 	 * 增量刷新任务内容，子类可覆盖
 	 * 默认行为：什么都不做，子类实现具体的增量刷新逻辑
+	 * @param _filePath 触发本次刷新的变更文件路径（可选，用于增量定位）
 	 */
-	public refreshTasks(): void {
+	public refreshTasks(_filePath?: string): void {
 		// 默认行为：什么都不做，子类可以覆盖
 	}
 

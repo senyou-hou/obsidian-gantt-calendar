@@ -103,7 +103,7 @@ export class GCMainView extends ItemView {
 				this.monthRenderer.refreshTasks();
 				break;
 			case 'week':
-				this.weekRenderer.refreshTasks();
+				this.weekRenderer.refreshTasks(filePath);
 				break;
 			case 'day':
 				this.dayRenderer.refreshTasks();
@@ -171,6 +171,9 @@ export class GCMainView extends ItemView {
 	private render(): void {
 		const startTime = performance.now();
 		Logger.debug('GCMainView', `render() called, viewType: ${this.viewType}`);
+
+		// 全量重建前保存周视图滚动位置，重建后恢复，防止滚动条跳动
+		const weekScrollState = this.viewType === 'week' ? this.captureWeekScroll() : null;
 
 		// 清理上一次渲染的资源
 		this.yearRenderer.runDomCleanups();
@@ -240,6 +243,43 @@ export class GCMainView extends ItemView {
 
 		const elapsed = performance.now() - startTime;
 		Logger.debug('GCMainView', `render() completed in ${elapsed.toFixed(2)}ms`);
+
+		if (weekScrollState) {
+			this.restoreWeekScroll(weekScrollState);
+		}
+	}
+
+	// ===== 周视图滚动位置保护 =====
+
+	/**
+	 * 捕获周视图当前滚动位置（时间轴内部滚动 + 外层瀑布流滚动）
+	 */
+	private captureWeekScroll(): { tasksGridTop: number; viewContentTop: number } {
+		const tasksGrid = this.contentEl.querySelector('.gc-view.gc-view--week .gc-week-view__tasks-grid') as HTMLElement;
+		return {
+			tasksGridTop: tasksGrid ? tasksGrid.scrollTop : 0,
+			viewContentTop: this.contentEl.scrollTop,
+		};
+	}
+
+	/**
+	 * 恢复周视图滚动位置（同步 + rAF 双保险，rAF 兜底异步内容导致的二次钳制）
+	 */
+	private restoreWeekScroll(state: { tasksGridTop: number; viewContentTop: number }): void {
+		const apply = () => {
+			if (!this.contentEl.isConnected) return;
+			if (state.viewContentTop > 0) {
+				this.contentEl.scrollTop = state.viewContentTop;
+			}
+			if (state.tasksGridTop > 0) {
+				const tasksGrid = this.contentEl.querySelector('.gc-view.gc-view--week .gc-week-view__tasks-grid') as HTMLElement;
+				if (tasksGrid) {
+					tasksGrid.scrollTop = state.tasksGridTop;
+				}
+			}
+		};
+		apply();
+		window.requestAnimationFrame(apply);
 	}
 
 	private renderCalendarContent(content: HTMLElement): void {
