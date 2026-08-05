@@ -357,18 +357,9 @@ export class WeekViewRenderer extends BaseViewRenderer {
 	 * 渲染时间轴任务项（启用拖拽）
 	 */
 	private renderTimelineTaskItem(task: GCTask, container: HTMLElement, targetDate: Date): void {
-		const config = {
-			...WeekViewConfig,
-			enableDrag: true,
-			showCheckbox: this.plugin.settings.weekViewShowCheckbox,
-			showTags: this.plugin.settings.weekViewShowTags,
-			showPriority: this.plugin.settings.weekViewShowPriority,
-			showTicktick: this.plugin.settings.weekViewShowTicktick,
-		};
-
 		new TaskCardComponent({
 			task,
-			config,
+			config: this.buildTimelineCardConfig(),
 			container,
 			app: this.app,
 			plugin: this.plugin,
@@ -494,9 +485,13 @@ export class WeekViewRenderer extends BaseViewRenderer {
 
 		Logger.debug('WeekView', `refreshTasks ENTER filePath=${filePath ?? '(none)'} isTimeline=${isTimeline} suppressionKeys=[${Array.from(this.dragSuppression.keys()).join(', ')}]`);
 
-		// 拖拽乐观 DOM 移动已完成：文件写入触发的这次刷新无需重渲染
+		// 拖拽乐观 DOM 移动已完成：文件写入触发的这次刷新无需重渲染，
+		// 但被保留的卡片 DOM 闭包中仍是旧任务对象（悬浮窗/右键菜单数据源），需用最新数据重建绑定
 		if (this.consumeSuppression(filePath)) {
 			Logger.debug('WeekView', 'refreshTasks SUPPRESSED (drag optimistic move already applied)');
+			if (filePath) {
+				this.refreshDraggedCards(filePath, container, isTimeline);
+			}
 			return;
 		}
 
@@ -531,6 +526,116 @@ export class WeekViewRenderer extends BaseViewRenderer {
 		return this.applyTagFilter(
 			this.applyStatusFilter(this.plugin.taskCache.getAllTasks())
 		);
+	}
+
+	/**
+	 * 拖拽刷新被抑制后，用最新任务数据重建被拖动卡片的 DOM 绑定。
+	 * 周期性任务会波及虚拟实例，需按日/按列重建以重新生成实例，而非单卡替换。
+	 */
+	private refreshDraggedCards(filePath: string, container: HTMLElement, isTimeline: boolean): void {
+		const hasRecurring = this.plugin.taskCache.getAllTasks().some(
+			t => t.filePath === filePath && !!t.repeat
+		);
+
+		if (hasRecurring) {
+			if (isTimeline) {
+				this.refreshTimelineTargeted(filePath);
+			} else {
+				this.refreshFlatColumns(container, filePath);
+			}
+			return;
+		}
+
+		const weekRoot = this.findWeekContainer();
+		if (!weekRoot) return;
+
+		const freshTasks = this.plugin.taskCache.getAllTasks();
+		const cards = weekRoot.querySelectorAll('[data-task-id]');
+		for (let i = 0; i < cards.length; i++) {
+			const cardEl = cards[i] as HTMLElement;
+			const taskId = cardEl.dataset.taskId || '';
+			if (!taskId.startsWith(filePath + ':')) continue;
+
+			const lineNumber = parseInt(taskId.slice(taskId.lastIndexOf(':') + 1), 10);
+			const freshTask = freshTasks.find(t => t.filePath === filePath && t.lineNumber === lineNumber);
+			if (!freshTask) continue;
+
+			this.replaceCardInPlace(cardEl, freshTask);
+		}
+	}
+
+	/**
+	 * 原位替换单张卡片：新元素继承旧元素位置，绑定最新任务对象
+	 * （悬浮窗、右键菜单、复选框等闭包数据随之更新）
+	 */
+	private replaceCardInPlace(oldCard: HTMLElement, task: GCTask): void {
+		const parent = oldCard.parentElement;
+		if (!parent) return;
+
+		const isTimelineCard = parent.classList.contains(WeekViewClasses.elements.timeTasks)
+			|| parent.classList.contains(WeekViewClasses.elements.alldayTasks);
+
+		const result = new TaskCardComponent({
+			task,
+			config: isTimelineCard ? this.buildTimelineCardConfig() : this.buildFlatCardConfig(),
+			container: parent,
+			app: this.app,
+			plugin: this.plugin,
+			targetDate: this.resolveCardTargetDate(oldCard, task),
+			onClick: (clickedTask) => {
+				const tooltipManager = TooltipManager.getInstance(this.plugin);
+				tooltipManager.hide();
+				this.refreshTasks(clickedTask.filePath);
+			},
+		}).render();
+
+		oldCard.replaceWith(result.element);
+	}
+
+	/**
+	 * 解析卡片的目标日期：优先取乐观移动时写入的 data-target-date，
+	 * 其次取任务自身的日期字段值
+	 */
+	private resolveCardTargetDate(cardEl: HTMLElement, task: GCTask): Date {
+		const attr = cardEl.dataset.targetDate;
+		if (attr) {
+			const parsed = createDate(attr);
+			if (!isNaN(parsed.getTime())) return parsed;
+		}
+		const dateField = this.plugin.settings.dateFilterField || 'dueDate';
+		const dateValue = getTaskDateField(task, dateField);
+		if (dateValue) {
+			const parsed = new Date(dateValue);
+			if (!isNaN(parsed.getTime())) return parsed;
+		}
+		return new Date();
+	}
+
+	/**
+	 * 时间轴模式卡片配置
+	 */
+	private buildTimelineCardConfig(): TaskCardConfig {
+		return {
+			...WeekViewConfig,
+			enableDrag: true,
+			showCheckbox: this.plugin.settings.weekViewShowCheckbox,
+			showTags: this.plugin.settings.weekViewShowTags,
+			showPriority: this.plugin.settings.weekViewShowPriority,
+			showTicktick: this.plugin.settings.weekViewShowTicktick,
+		};
+	}
+
+	/**
+	 * 扁平列表模式卡片配置
+	 */
+	private buildFlatCardConfig(): TaskCardConfig {
+		return {
+			...WeekViewConfig,
+			showCheckbox: this.plugin.settings.weekViewShowCheckbox,
+			showTags: this.plugin.settings.weekViewShowTags,
+			showPriority: this.plugin.settings.weekViewShowPriority,
+			showTicktick: this.plugin.settings.weekViewShowTicktick,
+		};
 	}
 
 	/**
@@ -945,17 +1050,9 @@ export class WeekViewRenderer extends BaseViewRenderer {
 	 * 渲染周视图任务项（扁平列表模式，使用统一组件）
 	 */
 	private renderTaskItem(task: GCTask, container: HTMLElement, targetDate: Date): void {
-		const config = {
-			...WeekViewConfig,
-			showCheckbox: this.plugin.settings.weekViewShowCheckbox,
-			showTags: this.plugin.settings.weekViewShowTags,
-			showPriority: this.plugin.settings.weekViewShowPriority,
-			showTicktick: this.plugin.settings.weekViewShowTicktick,
-		};
-
 		new TaskCardComponent({
 			task,
-			config,
+			config: this.buildFlatCardConfig(),
 			container,
 			app: this.app,
 			plugin: this.plugin,
