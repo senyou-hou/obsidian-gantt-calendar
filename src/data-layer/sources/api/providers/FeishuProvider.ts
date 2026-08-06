@@ -9,6 +9,7 @@ import { requestUrl, Notice } from 'obsidian';
 import { APIDataSource, APIResponse, APITaskDTO } from '../APIDataSource';
 import type { DataSourceConfig } from '../../../types';
 import { Logger } from '../../../../utils/logger';
+import { i18n } from '../../../../i18n/i18n';
 import { FeishuOAuth } from './feishu/FeishuOAuth';
 import type { FeishuOAuthConfig, FeishuTaskRaw, FeishuTaskResponse, FeishuTaskCreateResponse } from './feishu/FeishuTypes';
 import type { FeishuTaskPayload } from '../../../feishu-sync/taskMapper';
@@ -518,7 +519,7 @@ export class FeishuProvider extends APIDataSource {
                     this.tokenExpireAt = now + (expiresIn - 60) * 1000; // 提前1分钟过期
 
                     Logger.info('FeishuProvider', 'Token refreshed successfully');
-                    new Notice('飞书授权已自动续期', 3000);
+                    new Notice(i18n.t('sync.feishuAuthRenewed'), 3000);
 
                     // 通知外部更新配置
                     this.notifyConfigUpdate();
@@ -575,13 +576,14 @@ export class FeishuProvider extends APIDataSource {
             if (response.status >= 500 && attempt < maxRetries) {
                 const delay = 1000 * (attempt + 1);
                 Logger.warn('FeishuProvider', `API ${response.status} on attempt ${attempt + 1}, retrying in ${delay}ms...`, { path, method });
-                await new Promise(r => setTimeout(r, delay));
+                await new Promise(r => window.setTimeout(r, delay));
                 continue;
             }
 
             if (response.status >= 400) {
-                const feishuMsg = response.json?.msg || '';
-                const feishuCode = response.json?.code || '';
+                const jsonData = response.json as { msg?: string; code?: number } | undefined;
+                const feishuMsg = jsonData?.msg || '';
+                const feishuCode = jsonData?.code || '';
                 const errMsg = feishuMsg
                     ? `Feishu API ${response.status}: code=${feishuCode}, msg=${feishuMsg}`
                     : `Feishu API ${response.status}: ${response.text?.substring(0, 200)}`;
@@ -594,7 +596,7 @@ export class FeishuProvider extends APIDataSource {
                 throw new Error(errMsg);
             }
 
-            return response.json;
+            return response.json as T;
         }
 
         // 理论上不会到达此处（for 循环内部会 return 或 throw）

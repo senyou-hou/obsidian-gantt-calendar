@@ -86,21 +86,24 @@ export class TaskStore {
 	 */
 	private setupEventForwarding(): void {
 		this.eventBus.on('task:created', (data) => {
-			const filePath = (data as any)?.task?.filePath;
+			const taskData = data as { task?: { filePath?: string } } | undefined;
+			const filePath = taskData?.task?.filePath;
 			Logger.debug('TaskStore', `Event: task:created from ${filePath || 'unknown'}`);
 			this.invalidateCache();
 			this.notifyListenersDebounced(filePath);
 		});
 		this.eventBus.on('task:updated', (data) => {
-			const filePath = (data as any)?.task?.filePath;
+			const taskData = data as { task?: { filePath?: string } } | undefined;
+			const filePath = taskData?.task?.filePath;
 			Logger.debug('TaskStore', `Event: task:updated from ${filePath || 'unknown'}`);
 			this.invalidateCache();
 			this.notifyListenersDebounced(filePath);
 		});
 		this.eventBus.on('task:deleted', (data) => {
 			// 从 taskId 解析 filePath (格式: "filePath:lineNumber")
-			const taskId = (data as any)?.taskId;
-			const filePath = taskId ? taskId.split(':')[0] : undefined;
+			const deleteData = data as { taskId?: string } | undefined;
+			const taskId = deleteData?.taskId;
+			const filePath = taskId ? String(taskId).split(':')[0] : undefined;
 			Logger.debug('TaskStore', `Event: task:deleted from ${filePath || 'unknown'}`);
 			this.invalidateCache();
 			this.notifyListenersDebounced(filePath);
@@ -146,7 +149,7 @@ export class TaskStore {
 		if (markdownFiles.length === 0 && retryCount < 3) {
 			Logger.debug('TaskStore', 'Vault not ready, retrying in 500ms...');
 			this.isInitializing = false;
-			await new Promise(resolve => setTimeout(resolve, 500));
+			await new Promise(resolve => window.setTimeout(resolve, 500));
 			return this.initialize(globalTaskFilter, enabledFormats, retryCount + 1);
 		}
 
@@ -231,7 +234,7 @@ export class TaskStore {
 	 */
 	clear(): void {
 		if (this.updateDebounceTimer !== null) {
-			clearTimeout(this.updateDebounceTimer);
+			window.clearTimeout(this.updateDebounceTimer);
 			this.updateDebounceTimer = null;
 		}
 		// 销毁数据源，移除所有事件监听器
@@ -269,7 +272,7 @@ export class TaskStore {
 	 */
 	private notifyListenersDebounced(filePath?: string): void {
 		if (this.updateDebounceTimer !== null) {
-			clearTimeout(this.updateDebounceTimer);
+			window.clearTimeout(this.updateDebounceTimer);
 		}
 
 		this.updateDebounceTimer = window.setTimeout(() => {

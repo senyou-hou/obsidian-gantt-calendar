@@ -6,7 +6,6 @@
  */
 
 import { requestUrl } from 'obsidian';
-import { Logger } from '../../../utils/logger';
 
 /**
  * CalDAV 配置
@@ -32,7 +31,7 @@ export interface CalDAVEvent {
 /**
  * CalDAV 响应
  */
-export interface CalDAVResponse<T = any> {
+export interface CalDAVResponse<T = unknown> {
     success: boolean;
     data?: T;
     error?: string;
@@ -101,8 +100,9 @@ export class CalDAVClient {
                 status: response.status,
             };
         } catch (error) {
-            const status = (error as any)?.status;
-            const errorMsg = error instanceof Error ? error.message : String(error);
+            const errObj = error as { status?: number; message?: string } | undefined;
+            const status = errObj?.status;
+            const errorMsg = errObj?.message ?? String(error);
             return {
                 success: false,
                 error: status ? `HTTP ${status}: ${errorMsg}` : errorMsg,

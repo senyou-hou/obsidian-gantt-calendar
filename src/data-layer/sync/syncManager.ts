@@ -12,7 +12,10 @@
 import { EventBus } from '../EventBus';
 import { IDataSource } from '../IDataSource';
 import type { GCTask } from '../../types';
-import type { GCTaskWithSync, SyncConfiguration, SyncResult, DataSourceType } from './syncTypes';
+import { setTaskMergeableField } from '../../types';
+import type { MergeableTaskField } from '../../types';
+import type { GCTaskWithSync, SyncConfiguration, SyncResult, DataSourceType, TaskMatchGroup, SyncChanges, ConflictInfo } from './syncTypes';
+import type { DataSourceChanges } from '../types';
 import { TaskMatcher } from './taskMatcher';
 import { ConflictResolver } from './conflictResolver';
 import { VersionTracker } from './versionTracker';
@@ -228,7 +231,7 @@ export class SyncManager {
                         lastModified: task.lastModified || new Date(),
                         lastSyncAt: existing?.lastSyncAt,
                         syncStatus: existing?.syncStatus || 'pending',
-                    } as GCTaskWithSync;
+                    };
                 });
 
                 allTasks.push(...tasksWithMeta);
@@ -244,7 +247,7 @@ export class SyncManager {
      * 计算需要同步的变更
      */
     private calculateChanges(
-        groups: any[],
+        groups: TaskMatchGroup[],
         localTasks: GCTaskWithSync[],
         remoteTasks: GCTaskWithSync[]
     ) {
@@ -315,22 +318,23 @@ export class SyncManager {
                 if (rule) {
                     switch (rule.winner) {
                         case 'local':
-                            (changes as any)[field] = localVal;
+                            setTaskMergeableField(changes as GCTask, field as MergeableTaskField, localVal);
                             break;
                         case 'remote':
                             if (remoteVal !== undefined) {
-                                (changes as any)[field] = remoteVal;
+                                setTaskMergeableField(changes as GCTask, field as MergeableTaskField, remoteVal);
                             }
                             break;
-                        case 'newest':
+                        case 'newest': {
                             const localTime = local.lastModified?.getTime() || 0;
                             const remoteTime = remote.lastModified?.getTime() || 0;
-                            (changes as any)[field] = localTime >= remoteTime ? localVal : remoteVal;
+                            setTaskMergeableField(changes as GCTask, field as MergeableTaskField, localTime >= remoteTime ? localVal : remoteVal);
                             break;
+                        }
                     }
                 } else {
                     // 默认使用本地值
-                    (changes as any)[field] = localVal;
+                    setTaskMergeableField(changes as GCTask, field as MergeableTaskField, localVal);
                 }
             }
         }
@@ -341,7 +345,7 @@ export class SyncManager {
     /**
      * 应用远程变更到本地
      */
-    private async applyRemoteChanges(changes: any): Promise<void> {
+    private async applyRemoteChanges(changes: SyncChanges): Promise<void> {
         // 在实际实现中，这里需要更新 Markdown 文件
         // 由于 MarkdownDataSource 暂不支持直接写入，这里暂时只是记录日志
         Logger.debug('SyncManager', 'Applying remote changes:', {
@@ -353,7 +357,7 @@ export class SyncManager {
     /**
      * 推送本地变更到远程
      */
-    private async pushLocalChanges(changes: any): Promise<void> {
+    private async pushLocalChanges(changes: SyncChanges): Promise<void> {
         for (const task of changes.toSync) {
             if (task.source === 'markdown') {
                 // 推送到远程数据源
@@ -383,29 +387,29 @@ export class SyncManager {
     /**
      * 解决冲突
      */
-    private async resolveConflicts(conflicts: any[]): Promise<void> {
+    private async resolveConflicts(conflicts: ConflictInfo[]): Promise<void> {
         const resolved = this.resolver.resolveConflicts(conflicts);
 
-        for (const [syncId, resolvedTask] of resolved) {
+        for (const [, resolvedTask] of resolved) {
             // 更新版本追踪
-            this.versionTracker.updateSyncMetadata(resolvedTask as GCTaskWithSync);
+            this.versionTracker.updateSyncMetadata(resolvedTask);
         }
     }
 
     /**
      * 处理数据源变化
      */
-    private async handleSourceChanges(sourceId: string, changes: any): Promise<void> {
+    private async handleSourceChanges(sourceId: string, _changes: DataSourceChanges): Promise<void> {
         Logger.debug('SyncManager', `Handling changes from ${sourceId}`);
 
         // 触发增量同步
         if (this.configuration.syncInterval > 0) {
             // 防抖处理
             if (this.syncTimer) {
-                clearTimeout(this.syncTimer);
+                window.clearTimeout(this.syncTimer);
             }
             this.syncTimer = window.setTimeout(() => {
-                this.sync();
+                void this.sync();
             }, 5000); // 5秒后同步
         }
     }
@@ -435,7 +439,7 @@ export class SyncManager {
      */
     stopAutoSync(): void {
         if (this.syncTimer) {
-            clearTimeout(this.syncTimer);
+            window.clearTimeout(this.syncTimer);
             this.syncTimer = undefined;
         }
         Logger.info('SyncManager', 'Auto-sync stopped');
@@ -457,7 +461,7 @@ export class SyncManager {
     getStatus(): {
         isSyncing: boolean;
         lastSyncAt?: Date;
-        stats: any;
+        stats: ReturnType<VersionTracker['getStats']>;
     } {
         return {
             isSyncing: this.isSyncing,

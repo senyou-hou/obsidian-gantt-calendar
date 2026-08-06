@@ -8,6 +8,8 @@
  * @module tasks/taskStatus
  */
 
+import { i18n } from '../i18n/i18n';
+
 // ==================== 类型定义 ====================
 
 /**
@@ -18,7 +20,7 @@ export type DefaultTaskStatusType = 'todo' | 'done';
 /**
  * 任务状态类型（包括用户自定义）
  */
-export type TaskStatusType = DefaultTaskStatusType | string;
+export type TaskStatusType = string;
 
 /**
  * 主题模式类型
@@ -73,6 +75,30 @@ export interface TaskStatus {
     isDefault: boolean;
 }
 
+// ==================== 遗留字段辅助 ====================
+
+/**
+ * 通过类型擦除访问 TaskStatus 上已弃用的 backgroundColor / textColor。
+ * 使用 `as Record<string, unknown>` 绕过 @typescript-eslint/no-deprecated，
+ * 从而无需 eslint-disable 注释。
+ */
+export function getLegacyColor(
+    status: TaskStatus,
+    field: 'backgroundColor' | 'textColor'
+): string | undefined {
+    return (status as unknown as Record<string, unknown>)[field] as string | undefined;
+}
+
+/**
+ * 删除 TaskStatus 上已弃用的 backgroundColor / textColor 字段。
+ * 迁移代码专用，正常运行时不应调用。
+ */
+export function deleteLegacyColors(status: TaskStatus): void {
+    const rec = status as unknown as Record<string, unknown>;
+    delete rec.backgroundColor;
+    delete rec.textColor;
+}
+
 // ==================== 默认状态配置 ====================
 
 /**
@@ -84,8 +110,8 @@ export const DEFAULT_TASK_STATUSES: TaskStatus[] = [
     {
         key: 'todo',
         symbol: ' ',
-        name: '待办',
-        description: '待办任务',
+        name: i18n.t('taskStatus.todo'),
+        description: i18n.t('taskStatus.todoDescription'),
         lightColors: {
             backgroundColor: '#FFFFFF',
             textColor: '#333333',
@@ -99,8 +125,8 @@ export const DEFAULT_TASK_STATUSES: TaskStatus[] = [
     {
         key: 'done',
         symbol: 'x',
-        name: '已完成',
-        description: '已完成任务',
+        name: i18n.t('taskStatus.done'),
+        description: i18n.t('taskStatus.doneDescription'),
         lightColors: {
             backgroundColor: '#52c41a',
             textColor: '#FFFFFF',
@@ -122,8 +148,8 @@ export const PRESET_CUSTOM_STATUSES: TaskStatus[] = [
     {
         key: 'important',
         symbol: '!',
-        name: '重要',
-        description: '重要任务',
+        name: i18n.t('taskStatus.important'),
+        description: i18n.t('taskStatus.importantDescription'),
         lightColors: {
             backgroundColor: '#ff4d4f',
             textColor: '#FFFFFF',
@@ -137,8 +163,8 @@ export const PRESET_CUSTOM_STATUSES: TaskStatus[] = [
     {
         key: 'canceled',
         symbol: '-',
-        name: '已取消',
-        description: '已取消任务',
+        name: i18n.t('taskStatus.canceled'),
+        description: i18n.t('taskStatus.canceledDescription'),
         lightColors: {
             backgroundColor: '#d9d9d9',
             textColor: '#666666',
@@ -152,8 +178,8 @@ export const PRESET_CUSTOM_STATUSES: TaskStatus[] = [
     {
         key: 'in_progress',
         symbol: '/',
-        name: '进行中',
-        description: '进行中任务',
+        name: i18n.t('taskStatus.inProgress'),
+        description: i18n.t('taskStatus.inProgressDescription'),
         lightColors: {
             backgroundColor: '#faad14',
             textColor: '#FFFFFF',
@@ -167,8 +193,8 @@ export const PRESET_CUSTOM_STATUSES: TaskStatus[] = [
     {
         key: 'question',
         symbol: '?',
-        name: '有疑问',
-        description: '有疑问任务',
+        name: i18n.t('taskStatus.question'),
+        description: i18n.t('taskStatus.questionDescription'),
         lightColors: {
             backgroundColor: '#ffc069',
             textColor: '#333333',
@@ -182,8 +208,8 @@ export const PRESET_CUSTOM_STATUSES: TaskStatus[] = [
     {
         key: 'start',
         symbol: 'n',
-        name: '已开始',
-        description: '已开始任务',
+        name: i18n.t('taskStatus.started'),
+        description: i18n.t('taskStatus.startedDescription'),
         lightColors: {
             backgroundColor: '#40a9ff',
             textColor: '#FFFFFF',
@@ -243,6 +269,30 @@ export const STATUS_SYMBOL_EXCLUDED = ['[', ']'];
  * 仅待办（空格）和已完成（x）为不可删除的默认状态
  */
 export const RESERVED_SYMBOLS = [' ', 'x'];
+
+/**
+ * 根据当前语言刷新默认和预设状态的名称与描述
+ * 用于用户切换语言时更新已持久化的状态配置
+ */
+export function refreshPresetStatusNames(statuses: TaskStatus[]): void {
+	const keyToI18n: Record<string, { nameKey: string; descKey: string }> = {
+		todo: { nameKey: 'taskStatus.todo', descKey: 'taskStatus.todoDescription' },
+		done: { nameKey: 'taskStatus.done', descKey: 'taskStatus.doneDescription' },
+		important: { nameKey: 'taskStatus.important', descKey: 'taskStatus.importantDescription' },
+		canceled: { nameKey: 'taskStatus.canceled', descKey: 'taskStatus.canceledDescription' },
+		in_progress: { nameKey: 'taskStatus.inProgress', descKey: 'taskStatus.inProgressDescription' },
+		question: { nameKey: 'taskStatus.question', descKey: 'taskStatus.questionDescription' },
+		start: { nameKey: 'taskStatus.started', descKey: 'taskStatus.startedDescription' },
+	};
+
+	for (const status of statuses) {
+		const mapping = keyToI18n[status.key];
+		if (mapping) {
+			status.name = i18n.t(mapping.nameKey);
+			status.description = i18n.t(mapping.descKey);
+		}
+	}
+}
 
 // ==================== 工具函数 ====================
 
@@ -308,22 +358,22 @@ export function validateStatusSymbol(
 ): { valid: boolean; error?: string } {
     // 必须是单个字符
     if (symbol.length !== 1) {
-        return { valid: false, error: '符号必须是单个字符' };
+        return { valid: false, error: i18n.t('taskStatus.validation.symbolSingleChar') };
     }
 
     // 自定义状态不能使用保留符号
     if (isCustom && RESERVED_SYMBOLS.includes(symbol)) {
-        return { valid: false, error: `符号 "${symbol}" 已被默认状态使用` };
+        return { valid: false, error: i18n.t('taskStatus.validation.symbolReserved', { symbol }) };
     }
 
     // 不能使用禁止的符号
     if (STATUS_SYMBOL_EXCLUDED.includes(symbol)) {
-        return { valid: false, error: '符号不能使用特殊字符' };
+        return { valid: false, error: i18n.t('taskStatus.validation.symbolSpecial') };
     }
 
     // 必须符合正则（非空白字符）
     if (!STATUS_SYMBOL_REGEX.test(symbol)) {
-        return { valid: false, error: '符号不能为空或空白字符' };
+        return { valid: false, error: i18n.t('taskStatus.validation.symbolWhitespace') };
     }
 
     return { valid: true };
@@ -364,12 +414,13 @@ export function getStatusColor(
             bg: colors.backgroundColor || (mode === 'dark' ? '#2d333b' : '#FFFFFF'),
             text: colors.textColor || (mode === 'dark' ? '#adbac7' : '#333333'),
         };
-    } else if (status.backgroundColor && status.textColor) {
+    } else {
         // 旧格式：使用单一颜色（向后兼容）
-        return {
-            bg: status.backgroundColor,
-            text: status.textColor,
-        };
+        const bg = getLegacyColor(status, 'backgroundColor');
+        const text = getLegacyColor(status, 'textColor');
+        if (bg && text) {
+            return { bg, text };
+        }
     }
 
     // 如果没有任何颜色配置，返回基于当前主题的默认值
@@ -386,7 +437,7 @@ export function getStatusColor(
  * @returns 当前主题模式 ('light' | 'dark')
  */
 export function getCurrentThemeMode(): ThemeMode {
-    return document.body.hasClass('theme-dark') ? 'dark' : 'light';
+    return activeDocument.body.hasClass('theme-dark') ? 'dark' : 'light';
 }
 
 /**

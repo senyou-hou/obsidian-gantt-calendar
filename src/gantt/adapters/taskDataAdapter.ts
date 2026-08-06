@@ -4,9 +4,9 @@
  */
 
 import type { GCTask } from '../../types';
+import { getTaskDateField } from '../../types';
 import type { GanttChartTask, DateFieldType } from '../types';
 import type { StatusFilterState } from '../../types';
-import { formatDate } from '../../dateUtils/dateUtilsIndex';
 
 /**
  * 任务数据适配器
@@ -27,8 +27,8 @@ export class TaskDataAdapter {
 		endField: DateFieldType,
 		index: number
 	): GanttChartTask | null {
-		const startDate = (task as any)[startField] as Date | undefined;
-		const endDate = (task as any)[endField] as Date | undefined;
+		const startDate = getTaskDateField(task, startField);
+		const endDate = getTaskDateField(task, endField);
 
 		// 验证必要字段
 		if (!startDate || !endDate) {

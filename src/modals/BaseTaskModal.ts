@@ -13,9 +13,10 @@
  */
 
 import { App, Modal, setIcon } from 'obsidian';
+import { i18n } from '../i18n/i18n';
 import flatpickr from 'flatpickr';
 import type { GCTask } from '../types';
-import { EditTaskModalClasses } from '../utils/bem';
+import { EditTaskModalClasses, setCssProps } from '../utils/bem';
 import { TagSelector } from '../components/TagSelector';
 import { createDate } from '../dateUtils/timezone';
 
@@ -57,18 +58,18 @@ export abstract class BaseTaskModal extends Modal {
 	protected cancelledDate: Date | null = null;
 	protected completionDate: Date | null = null;
 	protected datePrecision: Record<string, 'day' | 'time'> = {};
-		protected flatpickrInstances: any[] = [];
+		protected flatpickrInstances: flatpickr.Instance[] = [];
 	protected selectedTags: string[] = [];
 	protected tagSelector: TagSelector;
 
 	// 优先级选项常量
 	protected readonly priorityOptions: PriorityOption[] = [
-		{ value: 'highest', label: '最高', icon: '🔺' },
-		{ value: 'high', label: '高', icon: '⏫' },
-		{ value: 'medium', label: '中', icon: '🔼' },
-		{ value: 'normal', label: '普通', icon: '◽' },
-		{ value: 'low', label: '低', icon: '🔽' },
-		{ value: 'lowest', label: '最低', icon: '⏬' },
+		{ value: 'highest', label: i18n.t('common.priority.highest'), icon: '🔺' },
+		{ value: 'high', label: i18n.t('common.priority.high'), icon: '⏫' },
+		{ value: 'medium', label: i18n.t('common.priority.medium'), icon: '🔼' },
+		{ value: 'normal', label: i18n.t('common.priority.normal'), icon: '◽' },
+		{ value: 'low', label: i18n.t('common.priority.low'), icon: '🔽' },
+		{ value: 'lowest', label: i18n.t('common.priority.lowest'), icon: '⏬' },
 	];
 
 	constructor(app: App) {
@@ -197,7 +198,7 @@ export abstract class BaseTaskModal extends Modal {
 
 		const priorityContainer = section.createDiv(EditTaskModalClasses.elements.priorityContainer);
 		priorityContainer.createEl('label', {
-			text: '优先级',
+			text: i18n.t('modals.editTask.priorityLabel'),
 			cls: EditTaskModalClasses.elements.sectionLabel
 		});
 
@@ -236,18 +237,18 @@ export abstract class BaseTaskModal extends Modal {
 
 		const dateContainer = section.createDiv(EditTaskModalClasses.elements.datesContainer);
 		dateContainer.createEl('label', {
-			text: '日期设置',
+			text: i18n.t('modals.editTask.datesLabel'),
 			cls: EditTaskModalClasses.elements.sectionLabel
 		});
 
 		const datesGrid = dateContainer.createDiv(EditTaskModalClasses.elements.datesGrid);
 
-		this.renderDateField(datesGrid, '➕ 创建', this.createdDate, (d) => this.createdDate = d, 'createdDate');
-		this.renderDateField(datesGrid, '🛫 开始', this.startDate, (d) => this.startDate = d, 'startDate');
-		this.renderDateField(datesGrid, '⏳ 计划', this.scheduledDate, (d) => this.scheduledDate = d, 'scheduledDate');
-		this.renderDateField(datesGrid, '📅 截止', this.dueDate, (d) => this.dueDate = d, 'dueDate');
-		this.renderDateField(datesGrid, '✅ 完成', this.completionDate, (d) => this.completionDate = d, 'completionDate');
-		this.renderDateField(datesGrid, '❌ 取消', this.cancelledDate, (d) => this.cancelledDate = d, 'cancelledDate');
+		this.renderDateField(datesGrid, i18n.t('modals.createTask.dateFields.created'), this.createdDate, (d) => this.createdDate = d, 'createdDate');
+		this.renderDateField(datesGrid, i18n.t('modals.createTask.dateFields.start'), this.startDate, (d) => this.startDate = d, 'startDate');
+		this.renderDateField(datesGrid, i18n.t('modals.createTask.dateFields.scheduled'), this.scheduledDate, (d) => this.scheduledDate = d, 'scheduledDate');
+		this.renderDateField(datesGrid, i18n.t('modals.createTask.dateFields.due'), this.dueDate, (d) => this.dueDate = d, 'dueDate');
+		this.renderDateField(datesGrid, i18n.t('modals.createTask.dateFields.completion'), this.completionDate, (d) => this.completionDate = d, 'completionDate');
+		this.renderDateField(datesGrid, i18n.t('modals.createTask.dateFields.cancelled'), this.cancelledDate, (d) => this.cancelledDate = d, 'cancelledDate');
 	}
 
 		/**
@@ -270,24 +271,21 @@ export abstract class BaseTaskModal extends Modal {
 
 			// 日期+时间输入框（Flatpickr 挂载点）
 			const dateWrapper = inputRow.createDiv();
-			dateWrapper.style.position = 'relative';
+			dateWrapper.addClass('gc-u-relative');
 
 			const dateInput = dateWrapper.createEl('input', {
 				type: 'text',
 				cls: EditTaskModalClasses.elements.dateInput,
-				attr: { readonly: 'true', placeholder: '选择日期和时间' }
+				attr: { readonly: 'true', placeholder: i18n.t('modals.editTask.datePlaceholder') }
 			});
-			dateInput.style.cursor = 'pointer';
+			dateInput.addClass('gc-u-pointer');
 
 			// 清除按钮
 			const dateClearBtn = dateWrapper.createEl('button', {
 				cls: EditTaskModalClasses.elements.dateClear,
 				text: '×'
 			});
-			dateClearBtn.style.position = 'absolute';
-			dateClearBtn.style.right = '2px';
-			dateClearBtn.style.top = '50%';
-			dateClearBtn.style.transform = 'translateY(-50%)';
+			dateClearBtn.addClass('gc-u-clear-btn-pos');
 
 			// Flatpickr 实例
 			const fpInstance = flatpickr(dateInput, {
@@ -310,12 +308,12 @@ export abstract class BaseTaskModal extends Modal {
 					}
 				},
 				onOpen: () => {
-					dateClearBtn.style.opacity = '0';
+					setCssProps(dateClearBtn, { opacity: '0' });
 					const ta = this.contentEl.querySelector('textarea');
 					if (ta) ta.setAttribute('inert', '');
 				},
 				onClose: () => {
-					dateClearBtn.style.opacity = '';
+					setCssProps(dateClearBtn, { opacity: '' });
 					const ta = this.contentEl.querySelector('textarea');
 					if (ta) ta.removeAttribute('inert');
 				},
@@ -339,70 +337,57 @@ export abstract class BaseTaskModal extends Modal {
 	 */
 	protected renderRepeatSection(container: HTMLElement): void {
 		const section = container.createDiv(EditTaskModalClasses.elements.section);
-		section.style.marginBottom = "16px";
+		section.addClass('gc-u-mb-md');
 
 		const repeatContainer = section.createDiv(EditTaskModalClasses.elements.repeatSection);
 
 		// 可点击的折叠标题行
 		const headerRow = repeatContainer.createDiv();
-		headerRow.style.display = 'flex';
-		headerRow.style.justifyContent = 'space-between';
-		headerRow.style.alignItems = 'center';
-		headerRow.style.cursor = 'pointer';
-		headerRow.style.padding = '4px 0';
+		headerRow.addClass('gc-u-flex-between', 'gc-u-pointer', 'gc-u-p-sm');
 
 		const headerLeft = headerRow.createDiv();
-		headerLeft.style.display = 'flex';
-		headerLeft.style.alignItems = 'center';
-		headerLeft.style.gap = '8px';
+		headerLeft.addClass('gc-u-flex-center', 'gc-u-gap-sm');
 
 		const toggleIcon = headerLeft.createEl('span');
-		toggleIcon.style.transition = 'transform 0.2s ease';
+		toggleIcon.addClass('gc-u-transition');
 		setIcon(toggleIcon, 'chevron-right');
 
 		headerLeft.createEl('label', {
-			text: '重复设置',
+			text: i18n.t('modals.editTask.recurrenceLabel'),
 			cls: EditTaskModalClasses.elements.sectionLabel
 		});
-		headerLeft.querySelector('label')!.style.marginBottom = '0';
+		setCssProps(headerLeft.querySelector('label')!, { marginBottom: '0' });
 
 		const repeatSummary = headerLeft.createEl('span', {
-			text: '不重复',
+			text: i18n.t('common.recurrence.none'),
 		});
-		repeatSummary.style.fontSize = 'var(--font-ui-smaller)';
-		repeatSummary.style.color = 'var(--text-muted)';
+		repeatSummary.addClass('gc-u-text-sm', 'gc-u-text-muted');
 
 		let isExpanded = false;
 		const repeatGrid = repeatContainer.createDiv(EditTaskModalClasses.elements.repeatGrid);
-		repeatGrid.style.display = 'none';
+		repeatGrid.addClass('gc-u-hidden');
 
 		headerRow.addEventListener('click', (e) => {
 			// 不拦截清除按钮等子元素的点击
 			if ((e.target as HTMLElement).tagName === 'BUTTON') return;
 			isExpanded = !isExpanded;
-			repeatGrid.style.display = isExpanded ? 'block' : 'none';
-			toggleIcon.style.transform = isExpanded ? 'rotate(90deg)' : '';
-			headerRow.style.marginBottom = isExpanded ? '12px' : '0';
+			setCssProps(repeatGrid, { display: isExpanded ? 'block' : 'none' });
+			setCssProps(toggleIcon, { transform: isExpanded ? 'rotate(90deg)' : '' });
+			setCssProps(headerRow, { marginBottom: isExpanded ? '12px' : '0' });
 		});
 
 		const clearBtn = headerRow.createEl('button', {
 			cls: EditTaskModalClasses.elements.repeatClearBtn,
 			text: '× 清除'
 		});
-		clearBtn.style.padding = '2px 8px';
-		clearBtn.style.fontSize = 'var(--font-ui-smaller)';
-		clearBtn.style.color = 'var(--text-muted)';
-		clearBtn.style.display = 'none';
+		clearBtn.addClass('gc-u-p-xs', 'gc-u-text-sm', 'gc-u-text-muted', 'gc-u-hidden');
 
 		// ========== 频率选择行：每 [间隔输入] [单位下拉] [自定义输入] ==========
 		const freqSelectRow = repeatGrid.createDiv(EditTaskModalClasses.elements.repeatRow);
-		freqSelectRow.style.display = 'flex';
-		freqSelectRow.style.alignItems = 'center';
-		freqSelectRow.style.gap = '8px';
-		freqSelectRow.style.marginBottom = '12px';
-		freqSelectRow.style.flexWrap = 'wrap';
+		freqSelectRow.addClass('gc-u-flex-center', 'gc-u-flex-wrap');
+		setCssProps(freqSelectRow, { gap: '8px', marginBottom: '12px' });
 
-		freqSelectRow.createEl('span', { text: '每' });
+		freqSelectRow.createEl('span', { text: i18n.t('common.recurrence.every') });
 
 		const intervalInput = freqSelectRow.createEl('input', {
 			type: 'number',
@@ -410,21 +395,20 @@ export abstract class BaseTaskModal extends Modal {
 			cls: EditTaskModalClasses.elements.repeatIntervalInput
 		});
 		intervalInput.min = '1';
-		intervalInput.style.width = '60px';
-		intervalInput.style.padding = '4px 8px';
+		setCssProps(intervalInput, { width: '60px', padding: '4px 8px' });
 
 		const freqSelect = freqSelectRow.createEl('select', {
 			cls: EditTaskModalClasses.elements.repeatFreqSelect
 		});
-		freqSelect.style.padding = '4px 8px';
+		setCssProps(freqSelect, { padding: '4px 8px' });
 
 		const freqOptions = [
-			{ value: '', label: '不重复' },
-			{ value: 'daily', label: '天' },
-			{ value: 'weekly', label: '周' },
-			{ value: 'monthly', label: '月' },
-			{ value: 'yearly', label: '年' },
-			{ value: 'custom', label: '自定义' },
+			{ value: '', label: i18n.t('common.recurrence.none') },
+			{ value: 'daily', label: i18n.t('common.recurrence.day') },
+			{ value: 'weekly', label: i18n.t('common.recurrence.week') },
+			{ value: 'monthly', label: i18n.t('common.recurrence.month') },
+			{ value: 'yearly', label: i18n.t('common.recurrence.year') },
+			{ value: 'custom', label: i18n.t('common.recurrence.custom') },
 		];
 		freqOptions.forEach(opt => {
 			freqSelect.createEl('option', { value: opt.value, text: opt.label });
@@ -433,47 +417,34 @@ export abstract class BaseTaskModal extends Modal {
 		// ========== 自定义规则输入（选择"自定义"时显示，在同一行） ==========
 		const manualInput = freqSelectRow.createEl('input', {
 			type: 'text',
-			placeholder: '如: every week on Monday when done',
+			placeholder: i18n.t('modals.createTask.repeat.customPlaceholder'),
 			cls: EditTaskModalClasses.elements.repeatManualInput
 		});
-		manualInput.style.display = 'none';
-		manualInput.style.flex = '1';
-		manualInput.style.minWidth = '200px';
-		manualInput.style.padding = '4px 8px';
+		manualInput.addClass('gc-u-hidden');
+		setCssProps(manualInput, { flex: '1', minWidth: '200px', padding: '4px 8px' });
 
 		// ========== 每周模式：星期选择按钮（默认隐藏，在同一行） ==========
 		const weeklyDaysContainer = freqSelectRow.createSpan(EditTaskModalClasses.elements.repeatDaysContainer);
-		weeklyDaysContainer.style.display = 'none';
-		weeklyDaysContainer.style.alignItems = 'center';
-		weeklyDaysContainer.style.gap = '4px';
+		weeklyDaysContainer.addClass('gc-u-hidden', 'gc-u-items-center', 'gc-u-gap-xs');
 
-		const weekDaysLabel = weeklyDaysContainer.createSpan({ text: '  ' });
+		weeklyDaysContainer.createSpan({ text: '  ' });
 		const dayButtons: HTMLButtonElement[] = [];
-		const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+		const dayNames = i18n.t("modals.createTask.repeat.weekdays") as unknown as string[];
 		dayNames.forEach((dayName) => {
 			const dayBtn = weeklyDaysContainer.createEl('button', {
 				cls: EditTaskModalClasses.elements.repeatDayCheckbox,
 				text: dayName
 			});
 			dayBtn.type = 'button';
-			dayBtn.style.padding = '4px 6px';
-			dayBtn.style.minWidth = '28px';
-			dayBtn.style.border = '1px solid var(--background-modifier-border)';
-			dayBtn.style.borderRadius = '4px';
-			dayBtn.style.backgroundColor = 'var(--background-secondary)';
-			dayBtn.style.cursor = 'pointer';
-			dayBtn.style.fontSize = 'var(--font-ui-smaller)';
+			dayBtn.addClass('gc-u-pointer', 'gc-u-text-sm');
+			setCssProps(dayBtn, { padding: '4px 6px', minWidth: '28px', border: '1px solid var(--background-modifier-border)', borderRadius: '4px', backgroundColor: 'var(--background-secondary)' });
 
 			dayBtn.addEventListener('click', () => {
 				dayBtn.classList.toggle('active');
 				if (dayBtn.classList.contains('active')) {
-					dayBtn.style.backgroundColor = 'var(--interactive-accent)';
-					dayBtn.style.color = 'var(--text-on-accent)';
-					dayBtn.style.borderColor = 'var(--interactive-accent)';
+					setCssProps(dayBtn, { backgroundColor: 'var(--interactive-accent)', color: 'var(--text-on-accent)', borderColor: 'var(--interactive-accent)' });
 				} else {
-					dayBtn.style.backgroundColor = 'var(--background-secondary)';
-					dayBtn.style.color = 'var(--text-normal)';
-					dayBtn.style.borderColor = 'var(--background-modifier-border)';
+					setCssProps(dayBtn, { backgroundColor: 'var(--background-secondary)', color: 'var(--text-normal)', borderColor: 'var(--background-modifier-border)' });
 				}
 				updateRepeat();
 			});
@@ -483,32 +454,25 @@ export abstract class BaseTaskModal extends Modal {
 
 		// ========== 每月模式：日期选择输入框（默认隐藏，在同一行） ==========
 		const monthlyDayContainer = freqSelectRow.createSpan(EditTaskModalClasses.elements.repeatMonthContainer);
-		monthlyDayContainer.style.display = 'none';
-		monthlyDayContainer.style.alignItems = 'center';
-		monthlyDayContainer.style.gap = '4px';
+		monthlyDayContainer.addClass('gc-u-hidden', 'gc-u-items-center', 'gc-u-gap-xs');
 
-		const monthDayLabel = monthlyDayContainer.createSpan({ text: '  ' });
+		monthlyDayContainer.createSpan({ text: '  ' });
 		const monthDayInput = monthlyDayContainer.createEl('input', {
 			type: 'number',
 			cls: EditTaskModalClasses.elements.repeatMonthSelect,
-			placeholder: '日期'
+			placeholder: i18n.t('modals.createTask.repeat.monthlyDayPlaceholder')
 		});
 		monthDayInput.min = '1';
 		monthDayInput.max = '31';
-		monthDayInput.style.width = '60px';
-		monthDayInput.style.padding = '4px 6px';
-		monthDayInput.style.fontSize = 'var(--font-ui-small)';
+		setCssProps(monthDayInput, { width: '60px', padding: '4px 6px', fontSize: 'var(--font-ui-small)' });
 
 		// ========== 重复方式选择 ==========
 		const whenDoneRow = repeatGrid.createDiv(EditTaskModalClasses.elements.repeatWhenDoneContainer);
-		whenDoneRow.style.display = 'flex';
-		whenDoneRow.style.alignItems = 'center';
-		whenDoneRow.style.gap = '8px';
-		whenDoneRow.style.marginBottom = '12px';
+		whenDoneRow.addClass('gc-u-flex-center', 'gc-u-gap-sm');
+		setCssProps(whenDoneRow, { marginBottom: '12px' });
 
-		whenDoneRow.createEl('span', { text: '重复方式：' });
-		whenDoneRow.style.fontSize = 'var(--font-ui-small)';
-		whenDoneRow.style.color = 'var(--text-muted)';
+		whenDoneRow.createEl('span', { text: i18n.t('modals.createTask.repeat.modeLabel') });
+		setCssProps(whenDoneRow, { fontSize: 'var(--font-ui-small)', color: 'var(--text-muted)' });
 
 		const whenDoneToggle = whenDoneRow.createEl('input', {
 			type: 'radio',
@@ -519,10 +483,10 @@ export abstract class BaseTaskModal extends Modal {
 		whenDoneToggle.checked = true;
 
 		const fixedLabel = whenDoneRow.createEl('label', {
-			text: '按固定日期重复'
+			text: i18n.t('modals.createTask.repeat.fixedDate')
 		});
 		fixedLabel.setAttribute('for', 'repeat-fixed');
-		fixedLabel.style.fontSize = 'var(--font-ui-small)';
+		setCssProps(fixedLabel, { fontSize: 'var(--font-ui-small)' });
 
 		const whenDoneToggle2 = whenDoneRow.createEl('input', {
 			type: 'radio',
@@ -532,57 +496,44 @@ export abstract class BaseTaskModal extends Modal {
 		whenDoneToggle2.id = 'repeat-when-done';
 
 		const whenDoneLabel = whenDoneRow.createEl('label', {
-			text: '完成后重新计算'
+			text: i18n.t('modals.createTask.repeat.whenDone')
 		});
 		whenDoneLabel.setAttribute('for', 'repeat-when-done');
-		whenDoneLabel.style.fontSize = 'var(--font-ui-small)';
-		whenDoneLabel.setAttribute('title', '下次任务的日期从完成当天算起，而不是从原计划日期算起');
+		setCssProps(whenDoneLabel, { fontSize: 'var(--font-ui-small)' });
+		whenDoneLabel.setAttribute('title', i18n.t('modals.createTask.repeat.whenDoneTooltip'));
 
 		// ========== 预览摘要区域 ==========
 		const previewBox = repeatGrid.createDiv(EditTaskModalClasses.elements.repeatPreview);
-		previewBox.style.padding = '8px 12px';
-		previewBox.style.backgroundColor = 'var(--background-modifier-hover)';
-		previewBox.style.borderRadius = '4px';
-		previewBox.style.fontSize = 'var(--font-ui-small)';
-		previewBox.style.color = 'var(--text-muted)';
-		previewBox.style.marginBottom = '12px';
-		previewBox.style.minHeight = '36px';
-		previewBox.style.display = 'flex';
-		previewBox.style.alignItems = 'center';
+		previewBox.addClass('gc-u-flex-center');
+		setCssProps(previewBox, { padding: '8px 12px', backgroundColor: 'var(--background-modifier-hover)', borderRadius: '4px', fontSize: 'var(--font-ui-small)', color: 'var(--text-muted)', marginBottom: '12px', minHeight: '36px' });
 
 		const previewText = previewBox.createEl('span', {
-			text: 'no repeat',
+			text: 'No repeat',
 			cls: EditTaskModalClasses.elements.repeatPreviewText
 		});
 
 		// ========== 规则说明 ==========
 		const rulesHint = repeatGrid.createDiv(EditTaskModalClasses.elements.repeatRulesHint);
-		rulesHint.style.marginTop = '8px';
-		rulesHint.style.padding = '8px';
-		rulesHint.style.backgroundColor = 'var(--background-modifier-hover)';
-		rulesHint.style.borderRadius = '4px';
-		rulesHint.style.fontSize = 'var(--font-ui-smaller)';
+		setCssProps(rulesHint, { marginTop: '8px', padding: '8px', backgroundColor: 'var(--background-modifier-hover)', borderRadius: '4px', fontSize: 'var(--font-ui-smaller)' });
 
 		const rulesHintTitle = rulesHint.createEl('div', {
-			text: '支持的规则：',
+			text: i18n.t('modals.createTask.repeat.rulesHintTitle'),
 			cls: EditTaskModalClasses.elements.repeatRulesHintTitle
 		});
-		rulesHintTitle.style.fontWeight = 'var(--font-medium)';
-		rulesHintTitle.style.marginBottom = '4px';
+		rulesHintTitle.addClass('gc-u-font-medium');
+		setCssProps(rulesHintTitle, { marginBottom: '4px' });
 
 		const rulesHintList = rulesHint.createEl('div', {
-			text: '• every day / every 3 days / every weekday / every weekend\n• every week / every 2 weeks / every week on Monday, Friday\n• every month / every month on the 15th / on the last\n• every year / every January on the 15th\n• 添加 "when done" 表示基于完成日期计算',
+			text: i18n.t('modals.createTask.repeat.rulesHintList'),
 			cls: EditTaskModalClasses.elements.repeatRulesHintList
 		});
-		rulesHintList.style.whiteSpace = 'pre-line';
-		rulesHintList.style.color = 'var(--text-muted)';
+		rulesHintList.addClass('gc-u-text-muted');
+		setCssProps(rulesHintList, { whiteSpace: 'pre-line' });
 
 		// ========== 错误提示 ==========
 		const errorMsg = repeatGrid.createDiv(EditTaskModalClasses.elements.repeatErrorMsg);
-		errorMsg.style.display = 'none';
-		errorMsg.style.color = 'var(--text-error)';
-		errorMsg.style.fontSize = 'var(--font-ui-smaller)';
-		errorMsg.style.marginTop = '4px';
+		errorMsg.addClass('gc-u-hidden', 'gc-u-text-sm');
+		setCssProps(errorMsg, { color: 'var(--text-error)', marginTop: '4px' });
 
 		// ========== 辅助函数：获取选中的星期 ==========
 		const getSelectedDays = (): number[] | undefined => {
@@ -603,12 +554,12 @@ export abstract class BaseTaskModal extends Modal {
 			// 不重复
 			if (!freqValue) {
 				this.repeat = null;
-				previewText.textContent = 'no repeat';
-				repeatSummary.textContent = '不重复';
-				clearBtn.style.display = 'none';
-				manualInput.style.display = 'none';
-				weeklyDaysContainer.style.display = 'none';
-				monthlyDayContainer.style.display = 'none';
+				previewText.textContent = 'No repeat';
+				repeatSummary.textContent = i18n.t('common.recurrence.none');
+				setCssProps(clearBtn, { display: 'none' });
+				setCssProps(manualInput, { display: 'none' });
+				setCssProps(weeklyDaysContainer, { display: 'none' });
+				setCssProps(monthlyDayContainer, { display: 'none' });
 				return;
 			}
 
@@ -620,19 +571,19 @@ export abstract class BaseTaskModal extends Modal {
 					if (this.validateRepeatRule(manualRule)) {
 						this.repeat = manualRule;
 						previewText.textContent = manualRule;
-						errorMsg.style.display = 'none';
+						setCssProps(errorMsg, { display: 'none' });
 					} else {
-						errorMsg.textContent = '规则格式不正确';
-						errorMsg.style.display = 'block';
+						errorMsg.textContent = i18n.t('modals.createTask.repeat.validationError');
+						setCssProps(errorMsg, { display: 'block' });
 					}
 				} else {
 					this.repeat = null;
-					previewText.textContent = 'no repeat';
-				repeatSummary.textContent = '不重复';
-				clearBtn.style.display = 'none';
+					previewText.textContent = 'No repeat';
+				repeatSummary.textContent = i18n.t('common.recurrence.none');
+				setCssProps(clearBtn, { display: 'none' });
 				}
-				weeklyDaysContainer.style.display = 'none';
-				monthlyDayContainer.style.display = 'none';
+				setCssProps(weeklyDaysContainer, { display: 'none' });
+				setCssProps(monthlyDayContainer, { display: 'none' });
 				return;
 			}
 
@@ -665,7 +616,7 @@ export abstract class BaseTaskModal extends Modal {
 			const rule = this.buildRepeatRule(config);
 			this.repeat = rule;
 			previewText.textContent = rule;
-			errorMsg.style.display = 'none';
+			setCssProps(errorMsg, { display: 'none' });
 		};
 
 		// ========== 事件监听 ==========
@@ -674,21 +625,19 @@ export abstract class BaseTaskModal extends Modal {
 			const value = freqSelect.value;
 
 			// 重置所有特殊选项显示
-			manualInput.style.display = 'none';
-			weeklyDaysContainer.style.display = 'none';
-			monthlyDayContainer.style.display = 'none';
+			setCssProps(manualInput, { display: 'none' });
+			setCssProps(weeklyDaysContainer, { display: 'none' });
+			setCssProps(monthlyDayContainer, { display: 'none' });
 
 			// 清除星期选择
 			dayButtons.forEach(btn => {
 				btn.classList.remove('active');
-				btn.style.backgroundColor = 'var(--background-secondary)';
-				btn.style.color = 'var(--text-normal)';
-				btn.style.borderColor = 'var(--background-modifier-border)';
+				setCssProps(btn, { backgroundColor: 'var(--background-secondary)', color: 'var(--text-normal)', borderColor: 'var(--background-modifier-border)' });
 			});
 			monthDayInput.value = '';
 
 			if (value === 'custom') {
-				manualInput.style.display = 'block';
+				setCssProps(manualInput, { display: 'block' });
 				// 预填充简单规则
 				const interval = parseInt(intervalInput.value) || 1;
 				const whenDone = whenDoneToggle2.checked;
@@ -696,9 +645,9 @@ export abstract class BaseTaskModal extends Modal {
 				if (whenDone) defaultRule += ' when done';
 				manualInput.value = defaultRule;
 			} else if (value === 'weekly') {
-				weeklyDaysContainer.style.display = 'flex';
+				setCssProps(weeklyDaysContainer, { display: 'flex' });
 			} else if (value === 'monthly') {
-				monthlyDayContainer.style.display = 'flex';
+				setCssProps(monthlyDayContainer, { display: 'flex' });
 			}
 
 			updateRepeat();
@@ -725,20 +674,18 @@ export abstract class BaseTaskModal extends Modal {
 			whenDoneToggle.checked = true;
 			whenDoneToggle2.checked = false;
 			manualInput.value = '';
-			manualInput.style.display = 'none';
-			weeklyDaysContainer.style.display = 'none';
-			monthlyDayContainer.style.display = 'none';
+			setCssProps(manualInput, { display: 'none' });
+			setCssProps(weeklyDaysContainer, { display: 'none' });
+			setCssProps(monthlyDayContainer, { display: 'none' });
 			monthDayInput.value = '';
 			dayButtons.forEach(btn => {
 				btn.classList.remove('active');
-				btn.style.backgroundColor = 'var(--background-secondary)';
-				btn.style.color = 'var(--text-normal)';
-				btn.style.borderColor = 'var(--background-modifier-border)';
+				setCssProps(btn, { backgroundColor: 'var(--background-secondary)', color: 'var(--text-normal)', borderColor: 'var(--background-modifier-border)' });
 			});
 
 			this.repeat = null;
-			previewText.textContent = 'no repeat';
-			errorMsg.style.display = 'none';
+			previewText.textContent = 'No repeat';
+			setCssProps(errorMsg, { display: 'none' });
 		});
 
 		// 初始化当前值（子类可以覆盖此方法）
@@ -747,10 +694,10 @@ export abstract class BaseTaskModal extends Modal {
 		// 如果有已有的 repeat 值，自动展开面板
 		if (this.repeat) {
 			isExpanded = true;
-			repeatGrid.style.display = 'block';
-			toggleIcon.style.transform = 'rotate(90deg)';
-			headerRow.style.marginBottom = '12px';
-			clearBtn.style.display = '';
+			setCssProps(repeatGrid, { display: 'block' });
+			setCssProps(toggleIcon, { transform: 'rotate(90deg)' });
+			setCssProps(headerRow, { marginBottom: '12px' });
+			setCssProps(clearBtn, { display: '' });
 		}
 	}
 
@@ -991,7 +938,7 @@ export abstract class BaseTaskModal extends Modal {
 	 */
 	protected renderTagsSection(container: HTMLElement): void {
 		const section = container.createDiv(EditTaskModalClasses.elements.section);
-		section.style.marginBottom = "16px";
+		section.addClass('gc-u-mb-md');
 		const tagsContainer = section.createDiv(EditTaskModalClasses.elements.tagsSection);
 
 		this.tagSelector = new TagSelector({
@@ -1021,8 +968,8 @@ export abstract class BaseTaskModal extends Modal {
 			cls: 'mod-cta',
 			text: save
 		});
-		saveBtn.addEventListener('click', async () => {
-			await this.saveTask();
+		saveBtn.addEventListener('click', () => {
+			void this.saveTask();
 		});
 	}
 
@@ -1035,7 +982,7 @@ export abstract class BaseTaskModal extends Modal {
 		if (this.styleEl && this.styleEl.parentNode) {
 			return;
 		}
-		this.styleEl = document.createElement('style');
+		this.styleEl = activeDocument.createElement('style');
 		this.styleEl.textContent = `
 			.${EditTaskModalClasses.block} {
 				width: 100%;
@@ -1347,7 +1294,7 @@ export abstract class BaseTaskModal extends Modal {
 				background: var(--interactive-accent-hover);
 			}
 		`;
-		document.head.appendChild(this.styleEl);
+		activeDocument.head.appendChild(this.styleEl);
 	}
 
 	// ==================== 工具方法 ====================

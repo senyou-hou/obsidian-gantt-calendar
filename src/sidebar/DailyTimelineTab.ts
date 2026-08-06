@@ -1,11 +1,11 @@
 import type { App } from 'obsidian';
 import { Notice, setIcon } from 'obsidian';
-import type { GCTask } from '../types';
-import { SidebarClasses } from '../utils/bem';
+import type { GCTask, IPluginContext } from '../types';
+import { i18n } from '../i18n/i18n';
+import { SidebarClasses, setCssProps } from '../utils/bem';
 import { TaskCardComponent, buildSidebarConfig } from '../components/TaskCard';
 import { getTodayInTimezone, isTodayInTimezone } from '../dateUtils/timezone';
 import { formatDate } from '../dateUtils/dateUtilsIndex';
-import { sortTasks } from '../tasks/taskSorter';
 import { openFileInExistingLeaf } from '../utils/fileOpener';
 import { updateTaskDateField } from '../tasks/taskUpdater';
 import { CreateTaskModal } from '../modals/CreateTaskModal';
@@ -18,11 +18,11 @@ import { renderCurrentTimeLine } from '../utils/currentTimeLine';
  */
 export class DailyTimelineTab {
 	private app: App;
-	private plugin: any;
+	private plugin: IPluginContext;
 	private cardResults: Array<{ element: HTMLElement; destroy: () => void }> = [];
 	private dragOverSlot: HTMLElement | null = null;
 
-	constructor(app: App, plugin: any) {
+	constructor(app: App, plugin: IPluginContext) {
 		this.app = app;
 		this.plugin = plugin;
 	}
@@ -45,15 +45,14 @@ export class DailyTimelineTab {
 
 	private renderTimeline(container: HTMLElement): void {
 		const today = getTodayInTimezone();
-		const todayStr = formatDate(today, 'yyyy-MM-dd');
-		const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+		const weekdayNames = i18n.t('sidebar.dailyTimeline.weekdays');
 
 		// 标题
 		const header = container.createDiv(SidebarClasses.elements.timelineHeader);
 		const dateText = header.createSpan({
-			text: `${formatDate(today, 'MM/dd')} ${weekdayNames[today.getDay()]}`
+			text: `${formatDate(today, 'MM/dd')} ${(weekdayNames as unknown as string[])[today.getDay()]}`
 		});
-		dateText.style.cssText = 'font-size:14px;font-weight:600;';
+		setCssProps(dateText, { fontSize: '14px', fontWeight: '600' });
 
 		const allTasks = this.plugin?.taskCache?.getAllTasks() as GCTask[] | undefined;
 		if (!allTasks) return;
@@ -63,7 +62,7 @@ export class DailyTimelineTab {
 
 		if (todayTasks.length === 0) {
 			const empty = container.createDiv(SidebarClasses.elements.emptyState);
-			empty.textContent = '今天没有任务';
+			empty.textContent = i18n.t('sidebar.dailyTimeline.noTasks');
 			return;
 		}
 
@@ -93,7 +92,7 @@ export class DailyTimelineTab {
 		// 渲染全天区域（始终显示，作为拖放目标）
 		const allDaySection = container.createDiv(SidebarClasses.elements.timelineAllDay);
 		const allDayLabel = allDaySection.createDiv(SidebarClasses.elements.timelineAllDayLabel);
-		allDayLabel.textContent = '全天';
+		allDayLabel.textContent = i18n.t('sidebar.dailyTimeline.allDay');
 		if (allDayTasks.length > 0) {
 			const allDayTasksEl = allDaySection.createDiv(SidebarClasses.elements.timelineAllDayTasks);
 			this.renderTaskCards(allDayTasksEl, allDayTasks);
@@ -210,7 +209,7 @@ export class DailyTimelineTab {
 			}
 		});
 
-		slot.addEventListener('drop', async (e: DragEvent) => {
+		slot.addEventListener('drop', (e: DragEvent) => {
 			e.preventDefault();
 			slot.removeClass('gc-sidebar__time-slot--drag-over');
 			this.dragOverSlot = null;
@@ -230,25 +229,27 @@ export class DailyTimelineTab {
 
 			const dateFieldName = this.plugin.settings.dateFilterField || 'dueDate';
 
-			try {
-				const newDate = new Date(today);
-				newDate.setHours(hour, 0, 0, 0);
+			void (async () => {
+				try {
+					const newDate = new Date(today);
+					newDate.setHours(hour, 0, 0, 0);
 
-				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateFieldName]: 'time' };
+					sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateFieldName]: 'time' };
 
-				await updateTaskDateField(
-					this.app,
-					sourceTask,
-					dateFieldName,
-					newDate,
-					this.plugin.settings.enabledTaskFormats
-				);
+					await updateTaskDateField(
+						this.app,
+						sourceTask,
+						dateFieldName,
+						newDate,
+						this.plugin.settings.enabledTaskFormats
+					);
 
-				Logger.debug('DailyTimelineTab', 'Task time updated via drag-drop', { taskId, hour });
-			} catch (error) {
-				Logger.error('DailyTimelineTab', 'Error updating task time:', error);
-				new Notice('更新任务时间失败');
-			}
+					Logger.debug('DailyTimelineTab', 'Task time updated via drag-drop', { taskId, hour });
+				} catch (error) {
+					Logger.error('DailyTimelineTab', 'Error updating task time:', error);
+					new Notice(i18n.t('views.dayView.updateTimeFailed'));
+				}
+			})();
 		});
 	}
 
@@ -268,7 +269,7 @@ export class DailyTimelineTab {
 			}
 		});
 
-		section.addEventListener('drop', async (e: DragEvent) => {
+		section.addEventListener('drop', (e: DragEvent) => {
 			e.preventDefault();
 			section.removeClass('gc-sidebar__all-day--drag-over');
 
@@ -284,24 +285,26 @@ export class DailyTimelineTab {
 
 			const dateFieldName = this.plugin.settings.dateFilterField || 'dueDate';
 
-			try {
-				// 设置为当天的全天任务（去掉时间）
-				const today = getTodayInTimezone();
-				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateFieldName]: 'day' };
+			void (async () => {
+				try {
+					// 设置为当天的全天任务（去掉时间）
+					const today = getTodayInTimezone();
+					sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateFieldName]: 'day' };
 
-				await updateTaskDateField(
-					this.app,
-					sourceTask,
-					dateFieldName,
-					today,
-					this.plugin.settings.enabledTaskFormats
-				);
+					await updateTaskDateField(
+						this.app,
+						sourceTask,
+						dateFieldName,
+						today,
+						this.plugin.settings.enabledTaskFormats
+					);
 
-				Logger.debug('DailyTimelineTab', 'Task set to all-day via drag-drop', { taskId });
-			} catch (error) {
-				Logger.error('DailyTimelineTab', 'Error setting task to all-day:', error);
-				new Notice('更新任务失败');
-			}
+					Logger.debug('DailyTimelineTab', 'Task set to all-day via drag-drop', { taskId });
+				} catch (error) {
+					Logger.error('DailyTimelineTab', 'Error setting task to all-day:', error);
+					new Notice(i18n.t('views.dayView.updateTaskFailed'));
+				}
+			})();
 		});
 	}
 
@@ -315,7 +318,7 @@ export class DailyTimelineTab {
 				app: this.app,
 				plugin: this.plugin,
 				onClick: () => {
-					openFileInExistingLeaf(this.app, task.filePath, task.lineNumber);
+					void openFileInExistingLeaf(this.app, task.filePath, task.lineNumber);
 				},
 				onRefresh: () => {
 					// 刷新通过缓存更新事件自动触发

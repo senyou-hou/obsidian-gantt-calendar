@@ -41,6 +41,8 @@ export const BLOCKS = {
 	TASK_TOOLTIP: 'task-tooltip',
 	/** 标签 */
 	TAG: 'tag',
+	/** 标签树形结构（多级标签） */
+	TAG_HIERARCHY: 'tag-hierarchy',
 	/** 链接 */
 	LINK: 'link',
 
@@ -50,6 +52,8 @@ export const BLOCKS = {
 	CREATE_TASK_BUTTON: 'create-task-btn',
 	/** 编辑任务弹窗 */
 	EDIT_TASK_MODAL: 'edit-task-modal',
+	/** 确认弹窗 */
+	CONFIRM_MODAL: 'confirm-modal',
 
 	/** 嵌入式编辑器 */
 	EMBEDDED_EDITOR: 'embedded-editor',
@@ -72,6 +76,13 @@ export const BLOCKS = {
 	SETTINGS_SYNC_WARNING: 'settings-sync-warning',
 	/** 同步结果弹窗 */
 	SYNC_RESULT_MODAL: 'sync-result-modal',
+	/** 标签选择器 */
+	TAG_SELECTOR: 'tag-selector',
+	/** 设置页 */
+	SETTINGS: 'settings',
+	/** 同步设置 */
+	SYNC_HINT: 'sync-hint',
+	SYNC_TASKLIST: 'sync-tasklist',
 } as const;
 
 /**
@@ -114,6 +125,10 @@ export const TaskCardClasses = {
 		warning: bem(BLOCKS.TASK_CARD, 'warning'),
 		ticktick: bem(BLOCKS.TASK_CARD, 'ticktick'),
 		repeatIndicator: bem(BLOCKS.TASK_CARD, 'repeat-indicator'),
+		metadata: bem(BLOCKS.TASK_CARD, 'metadata'),
+		metadataItem: bem(BLOCKS.TASK_CARD, 'metadata-item'),
+		metadataKey: bem(BLOCKS.TASK_CARD, 'metadata-key'),
+		metadataValue: bem(BLOCKS.TASK_CARD, 'metadata-value'),
 	},
 
 	/** Modifiers */
@@ -130,6 +145,9 @@ export const TaskCardClasses = {
 		// 周期任务修饰符
 		recurring: bem(BLOCKS.TASK_CARD, undefined, 'recurring'),
 		virtual: bem(BLOCKS.TASK_CARD, undefined, 'virtual'),
+		// 显示修饰符
+		compact: bem(BLOCKS.TASK_CARD, undefined, 'compact'),
+		textLimited: bem(BLOCKS.TASK_CARD, 'text', 'limited'),
 	}
 };
 
@@ -180,6 +198,7 @@ export const TooltipClasses = {
 
 		modifiers: {
 			visible: bem(BLOCKS.TASK_TOOLTIP, undefined, 'visible'),
+			initialized: bem(BLOCKS.TASK_TOOLTIP, undefined, 'initialized'),
 			propertyValueOverdue: bem(BLOCKS.TASK_TOOLTIP, 'property-value', 'overdue'),
 		},
 	};
@@ -209,6 +228,30 @@ export const TagClasses = {
 };
 
 /**
+ * 标签树形结构（多级标签）类名常量
+ */
+export const TagHierarchyClasses = {
+	block: bem(BLOCKS.TAG_HIERARCHY),
+
+	elements: {
+		container: bem(BLOCKS.TAG_HIERARCHY, 'container'),
+		item: bem(BLOCKS.TAG_HIERARCHY, 'item'),
+		toggleBtn: bem(BLOCKS.TAG_HIERARCHY, 'toggle-btn'),
+		label: bem(BLOCKS.TAG_HIERARCHY, 'label'),
+		counter: bem(BLOCKS.TAG_HIERARCHY, 'counter'),
+	},
+
+	/** 状态修饰符 */
+	modifiers: {
+		expanded: bem(BLOCKS.TAG_HIERARCHY, undefined, 'expanded'),
+		collapsed: bem(BLOCKS.TAG_HIERARCHY, undefined, 'collapsed'),
+	},
+
+	/** 深度修饰符工厂函数 */
+	levelModifier: (level: number) => bem(BLOCKS.TAG_HIERARCHY, undefined, `level-${level}`),
+};
+
+/**
  * 日视图类名常量
  */
 export const DayViewClasses = {
@@ -219,6 +262,7 @@ export const DayViewClasses = {
 		horizontal: bem(BLOCKS.DAY_VIEW, undefined, 'horizontal'),
 		vertical: bem(BLOCKS.DAY_VIEW, undefined, 'vertical'),
 		tasksOnly: bem(BLOCKS.DAY_VIEW, undefined, 'tasks-only'),
+		timeSlotDragOver: bem(BLOCKS.DAY_VIEW, 'time-slot', 'drag-over'),
 	},
 
 	/** Elements */
@@ -242,6 +286,7 @@ export const DayViewClasses = {
 			timeLabel: bem(BLOCKS.DAY_VIEW, 'time-label'),
 			timeTasks: bem(BLOCKS.DAY_VIEW, 'time-tasks'),
 			currentTimeLine: bem(BLOCKS.DAY_VIEW, 'timeline-current-time'),
+			slotCreate: bem(BLOCKS.DAY_VIEW, 'slot-create'),
 	},
 };
 
@@ -321,11 +366,14 @@ export const GanttClasses = {
 		tasklistContainer: bem(BLOCKS.GANTT, 'tasklist-container'),
 		chartContainer: bem(BLOCKS.GANTT, 'chart-container'),
 		stickyHeader: bem(BLOCKS.GANTT, 'sticky-header'),
+		handleLeft: bem(BLOCKS.GANTT, 'handle-left'),
+		handleRight: bem(BLOCKS.GANTT, 'handle-right'),
 	},
 
 	/** Modifiers */
 	modifiers: {
 		dayView: bem(BLOCKS.GANTT, undefined, 'day-view'),
+		chartDropTarget: bem(BLOCKS.GANTT, 'chart', 'drop-target'),
 	},
 };
 
@@ -416,9 +464,14 @@ export const ToolbarClasses = {
 			tagsGrid: bem(BLOCKS.TOOLBAR, 'tag-filter-tags-grid'),
 			tagItem: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-item'),
 			tagItemSelected: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-item', 'selected'),
+			tagItemHasChildren: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-item', 'has-children'),
+			tagToggle: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-toggle'),
+			tagToggleExpanded: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-toggle', 'expanded'),
+			tagChildren: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-children'),
 			tagCheckbox: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-checkbox'),
 			tagName: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-name'),
 			tagCount: bem(BLOCKS.TOOLBAR, 'tag-filter-tag-count'),
+			tagLevel: (level: number) => bem(BLOCKS.TOOLBAR, 'tag-filter-tag-item', `level-${level}`),
 			empty: bem(BLOCKS.TOOLBAR, 'tag-filter-empty'),
 		},
 
@@ -631,6 +684,7 @@ export const YearViewClasses = {
 	/** Modifiers */
 	modifiers: {
 		showLunar: bem(BLOCKS.YEAR_VIEW, undefined, 'show-lunar'),
+		monthCardShowLunar: bem(BLOCKS.YEAR_VIEW, 'month-card', 'show-lunar'),
 	},
 };
 
@@ -666,6 +720,7 @@ export const MonthViewClasses = {
 		festivalSolar: bem(BLOCKS.MONTH_VIEW, 'lunar-text', 'festival-solar'),
 		festivalLunar: bem(BLOCKS.MONTH_VIEW, 'lunar-text', 'festival-lunar'),
 		festivalSolarTerm: bem(BLOCKS.MONTH_VIEW, 'lunar-text', 'festival-solar-term'),
+		weekdayEmpty: bem(BLOCKS.MONTH_VIEW, 'weekday', 'empty'),
 	},
 };
 
@@ -698,6 +753,7 @@ export const WeekViewClasses = {
 			alldaySlot: bem(BLOCKS.WEEK_VIEW, 'allday-slot'),
 			alldayTasks: bem(BLOCKS.WEEK_VIEW, 'allday-tasks'),
 			currentTimeLine: bem(BLOCKS.WEEK_VIEW, 'timeline-current-time'),
+			slotCreate: bem(BLOCKS.WEEK_VIEW, 'slot-create'),
 	},
 
 	/** Modifiers */
@@ -741,6 +797,9 @@ export const SidebarClasses = {
 		timelineTimeTasks: bem(BLOCKS.SIDEBAR, 'timeline-time-tasks'),
 		timelineSlotCreate: bem(BLOCKS.SIDEBAR, 'timeline-slot-create'),
 		timelineCurrentTime: bem(BLOCKS.SIDEBAR, 'timeline-current-time'),
+		// 下拉菜单
+		dropdown: 'sidebar-dropdown',
+		dropdownItem: 'sidebar-dropdown-item',
 	},
 
 	/** Modifiers */
@@ -878,6 +937,7 @@ export const SyncResultModalClasses = {
 		detailDesc: bem(BLOCKS.SYNC_RESULT_MODAL, 'detail-desc'),
 		detailError: bem(BLOCKS.SYNC_RESULT_MODAL, 'detail-error'),
 		footer: bem(BLOCKS.SYNC_RESULT_MODAL, 'footer'),
+		footerButton: bem(BLOCKS.SYNC_RESULT_MODAL, 'footer-button'),
 	},
 
 	modifiers: {
@@ -885,5 +945,95 @@ export const SyncResultModalClasses = {
 		failed: bem(BLOCKS.SYNC_RESULT_MODAL, 'detail-item', 'failed'),
 		push: bem(BLOCKS.SYNC_RESULT_MODAL, 'detail-item', 'push'),
 		pull: bem(BLOCKS.SYNC_RESULT_MODAL, 'detail-item', 'pull'),
+		summaryMuted: bem(BLOCKS.SYNC_RESULT_MODAL, 'summary', 'muted'),
+		detailLabelConflict: bem(BLOCKS.SYNC_RESULT_MODAL, 'detail-label', 'conflict'),
 	},
 };
+
+/**
+ * 标签选择器类名常量
+ */
+export const TagSelectorClasses = {
+	block: bem(BLOCKS.TAG_SELECTOR),
+
+	elements: {
+		recommendedSection: bem(BLOCKS.TAG_SELECTOR, 'recommended-section'),
+		selectedSection: bem(BLOCKS.TAG_SELECTOR, 'selected-section'),
+		newSection: bem(BLOCKS.TAG_SELECTOR, 'new-section'),
+		label: bem(BLOCKS.TAG_SELECTOR, 'label'),
+		grid: bem(BLOCKS.TAG_SELECTOR, 'grid'),
+		newInput: bem(BLOCKS.TAG_SELECTOR, 'new-input'),
+		newButton: bem(BLOCKS.TAG_SELECTOR, 'new-button'),
+	},
+};
+
+/**
+ * 设置页类名常量
+ */
+export const SettingsClasses = {
+	block: bem(BLOCKS.SETTINGS),
+
+	elements: {
+		tabNav: bem(BLOCKS.SETTINGS, 'tab-nav'),
+		tabButton: bem(BLOCKS.SETTINGS, 'tab-button'),
+		tabContent: bem(BLOCKS.SETTINGS, 'tab-content'),
+		sectionHidden: bem(BLOCKS.SETTINGS, 'section-hidden'),
+	},
+};
+
+/**
+ * 同步设置类名常量
+ */
+export const SyncHintClasses = {
+	block: bem(BLOCKS.SYNC_HINT),
+
+	modifiers: {
+		warning: bem(BLOCKS.SYNC_HINT, undefined, 'warning'),
+		success: bem(BLOCKS.SYNC_HINT, undefined, 'success'),
+	},
+
+	elements: {
+		listName: bem(BLOCKS.SYNC_HINT, 'list-name'),
+	},
+};
+
+export const SyncTasklistClasses = {
+	block: bem(BLOCKS.SYNC_TASKLIST),
+
+	elements: {
+		header: bem(BLOCKS.SYNC_TASKLIST, 'header'),
+		grid: bem(BLOCKS.SYNC_TASKLIST, 'grid'),
+		card: bem(BLOCKS.SYNC_TASKLIST, 'card'),
+		cardSelected: bem(BLOCKS.SYNC_TASKLIST, 'card', 'selected'),
+		cardName: bem(BLOCKS.SYNC_TASKLIST, 'card-name'),
+		cardGuid: bem(BLOCKS.SYNC_TASKLIST, 'card-guid'),
+		cardMeta: bem(BLOCKS.SYNC_TASKLIST, 'card-meta'),
+		cardActions: bem(BLOCKS.SYNC_TASKLIST, 'card-actions'),
+	},
+};
+
+/**
+ * camelCase 转 kebab-case
+ * gridColumn → grid-column, backgroundColor → background-color
+ */
+function toKebabCase(str: string): string {
+	return str.replace(/([A-Z])/g, '-$1').toLowerCase();
+}
+
+/**
+ * 批量设置 CSS 属性（动态样式）
+ *
+ * 用于需要运行时计算值的场景。静态样式应优先使用 CSS 类。
+ * 支持 camelCase 和 kebab-case 属性名，自动转换为 kebab-case。
+ *
+ * @param el 目标元素
+ * @param props CSS 属性键值对（camelCase 或 kebab-case 均可）
+ *
+ * @example
+ * setCssProps(el, { display: 'flex', alignItems: 'center', '--task-color': color });
+ */
+export function setCssProps(el: HTMLElement, props: Record<string, string | number>): void {
+	for (const [key, value] of Object.entries(props)) {
+		el.style.setProperty(toKebabCase(key), String(value));
+	}
+}

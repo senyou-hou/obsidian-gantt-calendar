@@ -51,7 +51,7 @@ export class TaskCardComponent {
 	 */
 	private createCardElement(): HTMLElement {
 		const { config, task } = this.props;
-		const card = document.createElement('div');
+		const card = activeDocument.createElement('div');
 		card.className = TaskCardClasses.block;
 
 		// 应用视图修饰符
@@ -149,19 +149,21 @@ export class TaskCardComponent {
 
 		if (isVirtualTask(task)) {
 			// 虚拟任务：点击打开源任务文件
-			card.addEventListener('click', async (e) => {
+			card.addEventListener('click', (e) => {
 				e.stopPropagation();
-				const meta = getVirtualMetadata(task);
-				if (meta) {
-					const [filePath, lineStr] = meta.sourceTaskId.split(':');
-					const lineNumber = parseInt(lineStr);
-					await this.renderer.openTaskFile({
-						...task,
-						filePath,
-						lineNumber,
-					});
-				}
-				props.onClick?.(task);
+				void (async () => {
+					const meta = getVirtualMetadata(task);
+					if (meta) {
+						const [filePath, lineStr] = meta.sourceTaskId.split(':');
+						const lineNumber = parseInt(lineStr);
+						await this.renderer.openTaskFile({
+							...task,
+							filePath,
+							lineNumber,
+						});
+					}
+					props.onClick?.(task);
+				})();
 			});
 
 			// 虚拟任务不启用拖拽
@@ -175,9 +177,11 @@ export class TaskCardComponent {
 		// 真实任务的正常交互
 		// 点击事件
 		if (config.clickable && props.onClick) {
-			card.addEventListener('click', async () => {
-				await this.renderer.openTaskFile(task);
-				props.onClick?.(task);
+			card.addEventListener('click', () => {
+				void (async () => {
+					await this.renderer.openTaskFile(task);
+					props.onClick?.(task);
+				})();
 			});
 		}
 

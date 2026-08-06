@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, setIcon } from 'obsidian';
+import { Plugin, Notice, setIcon } from 'obsidian';
 import { GCMainView, GC_VIEW_ID } from './src/GCMainView';
 import { GCSidebarView, GC_SIDEBAR_VIEW_ID } from './src/GCSidebarView';
 import { GanttCalendarSettingTab } from './src/settings';
@@ -8,6 +8,8 @@ import { registerAllCommands } from './src/commands/commandsIndex';
 import { TooltipManager } from './src/utils/tooltipManager';
 import { Logger } from './src/utils/logger';
 import { setTimezoneOffset } from './src/dateUtils/timezone';
+import { i18n, initializeI18n, setLanguage, isChineseLanguage } from './src/i18n/i18n';
+import { refreshPresetStatusNames } from './src/tasks/taskStatus';
 
 import { SettingsManager } from './src/managers/SettingsManager';
 import { ThemeManager } from './src/managers/ThemeManager';
@@ -33,8 +35,19 @@ export default class GanttCalendarPlugin extends Plugin {
 	private lastSyncTime = '';
 
 	async onload() {
+		await initializeI18n();
+
 		this.settingsManager = new SettingsManager(this);
 		this.settings = await this.settingsManager.loadSettings();
+
+		// 应用用户设置的语言（覆盖系统检测）
+		if (this.settings.language && this.settings.language !== 'system') {
+			setLanguage(this.settings.language);
+		}
+		// 刷新预设状态名称以匹配当前语言
+		refreshPresetStatusNames(this.settings.taskStatuses);
+		// 英文模式下自动关闭农历显示
+		this.settings.showLunar = isChineseLanguage();
 
 		Logger.init(this);
 		setTimezoneOffset(this.settings.timezoneOffset);
@@ -64,7 +77,7 @@ export default class GanttCalendarPlugin extends Plugin {
 
 		// 启动时自动打开侧边栏
 		this.app.workspace.onLayoutReady(() => {
-			activateSidebarView(this.app);
+			void activateSidebarView(this.app);
 		});
 	}
 
@@ -124,8 +137,8 @@ export default class GanttCalendarPlugin extends Plugin {
 			const path = '.feishu-sync-state.json';
 			if (await this.app.vault.adapter.exists(path)) {
 				const raw = await this.app.vault.adapter.read(path);
-				const data = JSON.parse(raw);
-				const times = Object.values(data) as Array<{ lastSyncAt?: string }>;
+				const data = JSON.parse(raw) as Record<string, { lastSyncAt?: string }>;
+				const times = Object.values(data);
 				const latest = times
 					.map(r => r.lastSyncAt || '')
 					.filter(t => t)
@@ -159,7 +172,7 @@ export default class GanttCalendarPlugin extends Plugin {
 
 	private scheduleTaskCacheInit(): void {
 		this.app.workspace.onLayoutReady(() => {
-			setTimeout(() => {
+			window.setTimeout(() => {
 				this.taskCache.initialize(
 					this.settings.globalTaskFilter,
 					this.settings.enabledTaskFormats
@@ -177,7 +190,7 @@ export default class GanttCalendarPlugin extends Plugin {
 
 	private registerUIElements(): void {
 		const ribbonIconEl = this.addRibbonIcon('goal', '\u7518\u7279\u65E5\u5386', () => {
-			this.activateView();
+			void this.activateView();
 		});
 		ribbonIconEl.addClass('gantt-calendar-ribbon');
 
@@ -200,7 +213,7 @@ export default class GanttCalendarPlugin extends Plugin {
 		const total = tasks.length;
 		const incomplete = tasks.filter(t => !t.completed).length;
 		const lastSync = this.formatLastSync();
-		const syncStatus = this.syncStatusText || '就绪';
+		const syncStatus = this.syncStatusText || i18n.t('common.ready');
 
 		// 始终并列显示：任务统计 | 同步时间 | 同步状态
 		this.statusBarText.setText(` ${incomplete}/${total} | ${lastSync} | ${syncStatus}`);

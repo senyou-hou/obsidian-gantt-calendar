@@ -4,12 +4,10 @@
  * 负责设置的加载、保存、迁移和 CSS 变量更新
  */
 
-import { Notice } from 'obsidian';
 import type GanttCalendarPlugin from '../../main';
 import { DEFAULT_SETTINGS } from '../settings/constants';
 import type { GanttCalendarSettings } from '../settings/types';
-import { TaskStatus, ThemeColors } from '../tasks/taskStatus';
-import { Logger } from '../utils/logger';
+import { ThemeColors, deleteLegacyColors } from '../tasks/taskStatus';
 import { setTimezoneOffset } from '../dateUtils/timezone';
 
 /**
@@ -61,9 +59,9 @@ export class SettingsManager {
 	 * 更新 CSS 变量
 	 */
 	updateCSSVariables(settings: GanttCalendarSettings): void {
-		document.documentElement.style.setProperty('--festival-solar-color', settings.solarFestivalColor);
-		document.documentElement.style.setProperty('--festival-lunar-color', settings.lunarFestivalColor);
-		document.documentElement.style.setProperty('--festival-solar-term-color', settings.solarTermColor);
+		activeDocument.documentElement.style.setProperty('--festival-solar-color', settings.solarFestivalColor);
+		activeDocument.documentElement.style.setProperty('--festival-lunar-color', settings.lunarFestivalColor);
+		activeDocument.documentElement.style.setProperty('--festival-solar-term-color', settings.solarTermColor);
 	}
 
 	/**
@@ -72,7 +70,7 @@ export class SettingsManager {
 	private async migrateTemplaterSettings(settings: GanttCalendarSettings): Promise<void> {
 		const data = await this.plugin.loadData() as Record<string, unknown> || {};
 		if ('templaterTemplatePath' in data && !('dailyNoteTemplatePath' in data)) {
-			settings.dailyNoteTemplatePath = (data as any).templaterTemplatePath || '';
+			settings.dailyNoteTemplatePath = (data as Record<string, string>).templaterTemplatePath || '';
 			await this.plugin.saveData(settings);
 		}
 	}
@@ -128,10 +126,7 @@ export class SettingsManager {
 				}
 
 				// 清理已弃用的属性
-				// @ts-ignore - 迁移代码，有意删除已弃用属性
-				delete status.backgroundColor;
-				// @ts-ignore - 迁移代码，有意删除已弃用属性
-				delete status.textColor;
+				deleteLegacyColors(status);
 
 				needsSave = true;
 			} else if (needsInitialization) {
@@ -153,10 +148,7 @@ export class SettingsManager {
 				needsSave = true;
 			} else if (hasOldColors) {
 				// 即使已有新格式，也清理已弃用的属性
-				// @ts-ignore - 迁移代码，有意删除已弃用属性
-				delete status.backgroundColor;
-				// @ts-ignore - 迁移代码，有意删除已弃用属性
-				delete status.textColor;
+				deleteLegacyColors(status);
 				needsSave = true;
 			}
 		}

@@ -1,6 +1,7 @@
 import type GanttCalendarPlugin from '../../main';
 import type { SortField, SortOrder, TagFilterOperator } from '../types';
 import type { TaskStatus } from '../tasks/taskStatus';
+import type { FeishuTaskList } from '../data-layer/sources/api/providers/feishu/FeishuTypes';
 
 /**
  * 日期字段类型
@@ -46,6 +47,7 @@ export interface GanttCalendarSettings {
 	timezoneOffset: number | null; // 时区偏移量（分钟），null 表示跟随系统
 	timeFormat: '24h' | '12h'; // 时间显示格式
 	recurringTaskDisplayLimit: number; // 周期任务虚拟实例显示数量上限
+	language: 'system' | 'en' | 'zh'; // 插件界面语言
 
 	// ========== 持久化筛选和排序状态 ==========
 
@@ -107,65 +109,72 @@ export interface GanttCalendarSettings {
 	ganttEndField: DateFieldType;    // 甘特图结束时间字段
 
 	// ========== 同步设置 ==========
-	syncConfiguration?: {
-		enabledSources: {
-			api?: boolean;
-			caldav?: boolean;
-		};
-		syncDirection: 'bidirectional' | 'import-only' | 'export-only';
-		syncInterval: number;
-		conflictResolution: 'local-win' | 'remote-win' | 'newest-win' | 'manual';
-		feishuSyncTargetFile: string;  // 飞书新任务同步到的目标文件（默认 Tasks.md）
-		api?: {
-			provider: 'feishu' | 'microsoft-todo' | 'custom';
-			apiKey?: string;
-			endpoint?: string;
+	syncConfiguration?: SyncConfiguration;
+}
 
-			// OAuth 配置
-			clientId?: string;           // App ID (用于 OAuth)
-			clientSecret?: string;       // App Secret (用于 OAuth)
-			redirectUri?: string;        // OAuth 回调地址
+/**
+ * 同步配置
+ */
+export interface SyncConfiguration {
+	enabledSources: {
+		api?: boolean;
+		caldav?: boolean;
+	};
+	syncDirection: 'bidirectional' | 'import-only' | 'export-only';
+	syncInterval: number;
+	conflictResolution: 'local-win' | 'remote-win' | 'newest-win' | 'manual';
+	feishuSyncTargetFile: string;
+	api?: {
+		provider: 'feishu' | 'microsoft-todo' | 'custom';
+		apiKey?: string;
+		endpoint?: string;
 
-			// Token
-			accessToken?: string;
-			refreshToken?: string;
-			tokenExpireAt?: number;           // access_token 过期时间戳
-			refreshTokenExpireAt?: number;    // refresh_token 过期时间戳
+		// OAuth 配置
+		clientId?: string;
+		clientSecret?: string;
+		redirectUri?: string;
 
-			// 用户信息
-			userId?: string;
-			userOpenId?: string;
-			userName?: string;
+		// Token
+		accessToken?: string;
+		refreshToken?: string;
+		tokenExpireAt?: number;
+		refreshTokenExpireAt?: number;
 
-			// 旧字段保留兼容（飞书）
-			appId?: string;
-			appSecret?: string;
-			tenantId?: string;
+		// 用户信息
+		userId?: string;
+		userOpenId?: string;
+		userName?: string;
 
-			// 飞书任务清单
-			tasklistGuid?: string;    // 同步目标任务清单 GUID
-		};
-		caldav?: {
-			provider: 'google' | 'outlook' | 'apple' | 'custom';
-			url?: string;
-			username?: string;
-			password?: string;
-			clientId?: string;
-			clientSecret?: string;
-			redirectUri?: string;
-			accessToken?: string;
-			refreshToken?: string;
-		};
-		fieldMergeRules?: Array<{
-			field: 'description' | 'completed' | 'dueDate' | 'startDate' | 'priority' | 'status' | 'tags';
-			winner: 'local' | 'remote' | 'newest';
-		}>;
-		pushFilter?: {
-			enabled: boolean;
-			paths: string[];
-			completionStatus: 'all' | 'incomplete-only';
-			sinceDate: string;
-		};
+		// 旧字段保留兼容（飞书）
+		appId?: string;
+		appSecret?: string;
+		tenantId?: string;
+
+		// 飞书任务清单
+		tasklistGuid?: string;
+		taskLists?: FeishuTaskList[];
+		taskListsFetchedAt?: number;
+	};
+	caldav?: {
+		provider: 'google' | 'outlook' | 'apple' | 'custom';
+		url?: string;
+		username?: string;
+		password?: string;
+		clientId?: string;
+		clientSecret?: string;
+		redirectUri?: string;
+		accessToken?: string;
+		refreshToken?: string;
+	};
+	fieldMergeRules?: Array<{
+		field: 'description' | 'completed' | 'dueDate' | 'startDate' | 'priority' | 'status' | 'tags';
+		winner: 'local' | 'remote' | 'newest';
+	}>;
+	pushFilter?: {
+		enabled: boolean;
+		paths: string[];
+		completionStatus: 'all' | 'incomplete-only';
+		sinceDate: string;
 	};
 }
 

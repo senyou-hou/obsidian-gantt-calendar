@@ -259,7 +259,7 @@ export class RegularExpressions {
          * "任务 ⏫" -> 匹配
          * "🔺 重要" -> 匹配
          */
-        anyPriorityRegex: /[🔺⏫🔼🔽⏬]/,
+        anyPriorityRegex: /[🔺⏫🔼🔽⏬]/u,
 
         /**
          * 格式检测正则
@@ -272,7 +272,7 @@ export class RegularExpressions {
          * "- [ ] 任务 🔁 every day" -> 匹配（Tasks 格式）
          * "- [ ] 普通任务" -> 不匹配
          */
-        formatDetectionRegex: /([➕🛫⏳📅❌✅])\s*\d{4}-\d{2}-\d{2}(?: \d{2}:\d{2})?|[🔺⏫🔼🔽⏬]|🔁\s+every/,
+        formatDetectionRegex: /([➕🛫⏳📅❌✅])\s*\d{4}-\d{2}-\d{2}(?: \d{2}:\d{2})?|[🔺⏫🔼🔽⏬]|🔁\s+every/u,
     } as const;
 
     // ==================== Dataview 格式正则表达式 ====================
@@ -493,7 +493,7 @@ export class RegularExpressions {
          * "#前端 开发任务" -> " 开发任务"
          * "完成任务#tag" -> "完成任务"
          */
-        removeTags: /#([a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9_\u4e00-\u9fa5]*)\s*/g,
+        removeTags: /#([a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9_/\u4e00-\u9fa5]*)\s*/g,
 
         /**
          * 匹配标签（用于提取标签内容）
@@ -502,7 +502,7 @@ export class RegularExpressions {
          * @example
          * "任务 #work #urgent" -> 可以提取出 ["work", "urgent"]
          */
-        matchTags: /#([a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9_\u4e00-\u9fa5]*)/g,
+        matchTags: /#([a-zA-Z\u4e00-\u9fa5][a-zA-Z0-9_/\u4e00-\u9fa5]*)/g,
 
         /**
          * 提取 %%content%% ticktick 内容（非贪婪，支持多个块）
@@ -640,7 +640,7 @@ export class RegularExpressions {
          * "访问 http://example.com 查看" -> 匹配，捕获组1: "http://example.com"
          * "<a href=\"https://example.com\">" -> 不匹配（在引号中）
          */
-        urlLinkRegex: /(https?:\/\/[^\s<>"\)]+)/g,
+        urlLinkRegex: /(https?:\/\/[^\s<>")]+)/g,
 
         /**
          * 综合链接检测正则
@@ -651,6 +651,6 @@ export class RegularExpressions {
          * "访问 [[首页]] 或 https://example.com" -> 匹配（包含链接）
          * "普通文本内容" -> 不匹配
          */
-        anyLinkRegex: /(\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\[([^\]]+)\]\(([^)]+)\)|https?:\/\/[^\s<>"\)]+)/,
+        anyLinkRegex: /(\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\[([^\]]+)\]\(([^)]+)\)|https?:\/\/[^\s<>")]+)/,
     } as const;
 }

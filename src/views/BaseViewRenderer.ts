@@ -1,11 +1,9 @@
-import { App, Notice } from 'obsidian';
+import { App } from 'obsidian';
 import type { IPluginContext,  GCTask } from '../types';
 import { DEFAULT_SORT_STATE, DEFAULT_TAG_FILTER_STATE, DEFAULT_STATUS_FILTER_STATE, type SortState, type TagFilterState, type StatusFilterState } from '../types';
 import { formatDate } from '../dateUtils/dateUtilsIndex';
 import { openFileInExistingLeaf } from '../utils/fileOpener';
-import { getStatusColor, DEFAULT_TASK_STATUSES, getStatusByKey } from '../tasks/taskStatus';
-import type { TaskStatus } from '../tasks/taskStatus';
-import { RegularExpressions } from '../utils/RegularExpressions';
+import { getStatusColor, DEFAULT_TASK_STATUSES } from '../tasks/taskStatus';
 import { Logger } from '../utils/logger';
 import { TooltipClasses } from '../utils/bem';
 import { LinkRenderer } from '../utils/linkRenderer';
@@ -44,8 +42,9 @@ export abstract class BaseViewRenderer {
 	/**
 	 * 增量刷新任务内容，子类可覆盖
 	 * 默认行为：什么都不做，子类实现具体的增量刷新逻辑
+	 * @param _filePath 触发本次刷新的变更文件路径（可选，用于增量定位）
 	 */
-	public refreshTasks(): void {
+	public refreshTasks(_filePath?: string): void {
 		// 默认行为：什么都不做，子类可以覆盖
 	}
 
@@ -175,15 +174,18 @@ export abstract class BaseViewRenderer {
 		const settings = this.plugin?.settings;
 		if (!settings) return;
 
+		// 使用 Record<string, unknown> 安全访问动态属性，然后显式断言类型
+		const settingsRecord = settings as unknown as Record<string, unknown>;
+
 		// 加载状态筛选
-		const savedStatuses = (settings as Record<string, any>)[`${settingsPrefix}SelectedStatuses`];
+		const savedStatuses = settingsRecord[`${settingsPrefix}SelectedStatuses`] as string[] | undefined;
 		if (savedStatuses !== undefined) {
 			this.statusFilterState = { selectedStatuses: savedStatuses };
 		}
 
 		// 加载标签筛选
-		const savedTags = (settings as Record<string, any>)[`${settingsPrefix}SelectedTags`];
-		const savedOperator = (settings as Record<string, any>)[`${settingsPrefix}TagOperator`];
+		const savedTags = settingsRecord[`${settingsPrefix}SelectedTags`] as string[] | undefined;
+		const savedOperator = settingsRecord[`${settingsPrefix}TagOperator`] as 'AND' | 'OR' | 'NOT' | undefined;
 		if (savedTags !== undefined || savedOperator !== undefined) {
 			this.tagFilterState = {
 				selectedTags: savedTags || [],
@@ -201,8 +203,9 @@ export abstract class BaseViewRenderer {
 		const settings = this.plugin?.settings;
 		if (!settings) return;
 
-		const savedField = (settings as Record<string, any>)[`${this.settingsPrefix}SortField`];
-		const savedOrder = (settings as Record<string, any>)[`${this.settingsPrefix}SortOrder`];
+		const settingsRecord = settings as unknown as Record<string, unknown>;
+		const savedField = settingsRecord[`${this.settingsPrefix}SortField`] as SortState['field'] | undefined;
+		const savedOrder = settingsRecord[`${this.settingsPrefix}SortOrder`] as SortState['order'] | undefined;
 		if (savedField && savedOrder) {
 			this.sortState = { field: savedField, order: savedOrder };
 		} else {
@@ -232,8 +235,9 @@ export abstract class BaseViewRenderer {
 	 */
 	private saveSortState(): void {
 		if (!this.plugin?.settings) return;
-		(this.plugin.settings as Record<string, any>)[`${this.settingsPrefix}SortField`] = this.sortState.field;
-		(this.plugin.settings as Record<string, any>)[`${this.settingsPrefix}SortOrder`] = this.sortState.order;
+		const settingsRecord = this.plugin.settings as unknown as Record<string, unknown>;
+		settingsRecord[`${this.settingsPrefix}SortField`] = this.sortState.field;
+		settingsRecord[`${this.settingsPrefix}SortOrder`] = this.sortState.order;
 		this.plugin.saveSettings().catch((err: unknown) => {
 			Logger.error('BaseViewRenderer', 'Failed to save sort state', err);
 		});
@@ -244,7 +248,8 @@ export abstract class BaseViewRenderer {
 	 */
 	protected async saveStatusFilterState(settingsPrefix: string): Promise<void> {
 		if (!this.plugin?.settings) return;
-		(this.plugin.settings as Record<string, any>)[`${settingsPrefix}SelectedStatuses`] =
+		const settingsRecord = this.plugin.settings as unknown as Record<string, unknown>;
+		settingsRecord[`${settingsPrefix}SelectedStatuses`] =
 			this.statusFilterState.selectedStatuses;
 		await this.plugin.saveSettings();
 	}
@@ -254,9 +259,10 @@ export abstract class BaseViewRenderer {
 	 */
 	protected async saveTagFilterState(settingsPrefix: string): Promise<void> {
 		if (!this.plugin?.settings) return;
-		(this.plugin.settings as Record<string, any>)[`${settingsPrefix}SelectedTags`] =
+		const settingsRecord = this.plugin.settings as unknown as Record<string, unknown>;
+		settingsRecord[`${settingsPrefix}SelectedTags`] =
 			this.tagFilterState.selectedTags;
-		(this.plugin.settings as Record<string, any>)[`${settingsPrefix}TagOperator`] =
+		settingsRecord[`${settingsPrefix}TagOperator`] =
 			this.tagFilterState.operator;
 		await this.plugin.saveSettings();
 	}
@@ -288,7 +294,9 @@ export abstract class BaseViewRenderer {
 	}
 
 	/**
-	 * 应用标签筛选到任务列表
+	 * 应用标签筛选到任务列表（支持多级标签层级匹配）
+	 * 选中父标签时，会同时匹配带有子标签的任务
+	 * 例如：选中 #project 会匹配带有 #project/frontend 的任务
 	 * @param tasks 原始任务列表
 	 * @returns 筛选后的任务列表
 	 */
@@ -316,19 +324,25 @@ export abstract class BaseViewRenderer {
 			// 将任务标签转换为小写用于匹配
 			const taskTagsLower = task.tags.map(tag => tag.toLowerCase());
 
-			// AND 模式：任务必须包含所有选中标签
+			// 判断任务标签是否匹配某个筛选标签（支持层级）
+			const tagMatches = (selectedTag: string) =>
+				taskTagsLower.some(taskTag =>
+					taskTag === selectedTag || taskTag.startsWith(selectedTag + '/')
+				);
+
+			// AND 模式：任务必须匹配所有选中标签（含层级）
 			if (operator === 'AND') {
-				return selectedTagsLower.every(tag => taskTagsLower.includes(tag));
+				return selectedTagsLower.every(tagMatches);
 			}
 
-			// OR 模式：任务包含任一选中标签即可
+			// OR 模式：任务匹配任一选中标签即可（含层级）
 			if (operator === 'OR') {
-				return selectedTagsLower.some(tag => taskTagsLower.includes(tag));
+				return selectedTagsLower.some(tagMatches);
 			}
 
-			// NOT 模式：排除包含任一选中标签的任务
+			// NOT 模式：排除匹配任一选中标签的任务（含层级）
 			if (operator === 'NOT') {
-				return !selectedTagsLower.some(tag => taskTagsLower.includes(tag));
+				return !selectedTagsLower.some(tagMatches);
 			}
 
 			return false;
@@ -339,7 +353,7 @@ export abstract class BaseViewRenderer {
 	 * 清理悬浮提示
 	 */
 	protected clearTaskTooltips(): void {
-		const tooltips = document.querySelectorAll(`.${TooltipClasses.block}`);
+		const tooltips = activeDocument.querySelectorAll(`.${TooltipClasses.block}`);
 		tooltips.forEach(t => t.remove());
 	}
 

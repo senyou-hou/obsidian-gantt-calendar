@@ -1,8 +1,9 @@
 import type GanttCalendarPlugin from '../../../main';
-import { TaskStatus, ThemeColors, getCurrentThemeMode } from '../../tasks/taskStatus';
+import { TaskStatus, ThemeColors, getCurrentThemeMode, getLegacyColor } from '../../tasks/taskStatus';
 import { SettingsStatusCardClasses } from '../../utils/bem';
 import { rgbToHex } from '../utils/color';
 import { MacaronColorPicker } from './MacaronColorPicker';
+import { i18n } from '../../i18n/i18n';
 
 export interface TaskStatusCardConfig {
 	container: HTMLElement;
@@ -49,7 +50,7 @@ export class TaskStatusCard {
 			if (onDelete) {
 				const deleteBtn = btnGroup.createEl('button', cls.deleteBtn);
 				deleteBtn.setText('×');
-				deleteBtn.addEventListener('click', onDelete);
+				deleteBtn.addEventListener('click', () => { void onDelete(); });
 			}
 		}
 
@@ -71,7 +72,7 @@ export class TaskStatusCard {
 		const section = parent.createDiv(cls.themeSection);
 
 		section.createEl('span', {
-			text: themeMode === 'light' ? '亮色' : '暗色',
+			text: themeMode === 'light' ? i18n.t('settings.taskStatus.colors.lightTheme') : i18n.t('settings.taskStatus.colors.darkTheme'),
 			cls: cls.themeLabel,
 		});
 
@@ -81,8 +82,8 @@ export class TaskStatusCard {
 
 		const row = section.createDiv(cls.colorRow);
 
-		this.renderColorField(row, plugin, status, themeMode, 'backgroundColor', '背景', colors?.backgroundColor || defaultBg);
-		this.renderColorField(row, plugin, status, themeMode, 'textColor', '文字', colors?.textColor || defaultText);
+		this.renderColorField(row, plugin, status, themeMode, 'backgroundColor', i18n.t('settings.taskStatus.colors.background'), colors?.backgroundColor || defaultBg);
+		this.renderColorField(row, plugin, status, themeMode, 'textColor', i18n.t('settings.taskStatus.colors.text'), colors?.textColor || defaultText);
 	}
 
 	private renderColorField(
@@ -104,14 +105,16 @@ export class TaskStatusCard {
 		const hiddenInput = swatchWrapper.createEl('input', {
 			type: 'color',
 			cls: cls.hiddenInput,
-		}) as HTMLInputElement;
+		});
 		hiddenInput.value = currentColor;
 
 		const swatch = swatchWrapper.createDiv(cls.swatch);
 		swatch.style.backgroundColor = currentColor;
 
-		hiddenInput.addEventListener('change', async () => {
-			await this.updateColor(plugin, status, themeMode, colorType, hiddenInput.value, swatch);
+		hiddenInput.addEventListener('change', () => {
+			void (async () => {
+				await this.updateColor(plugin, status, themeMode, colorType, hiddenInput.value, swatch);
+			})();
 		});
 
 		const macaronContainer = field.createDiv();
@@ -143,7 +146,7 @@ export class TaskStatusCard {
 		this.ensureThemeColors(target);
 
 		const colorKey = themeMode === 'dark' ? 'darkColors' : 'lightColors';
-		(target[colorKey] as ThemeColors)[colorType] = color;
+		(target[colorKey])[colorType] = color;
 
 		swatch.style.backgroundColor = color;
 		this.updatePreview();
@@ -172,8 +175,11 @@ export class TaskStatusCard {
 		if (status.lightColors && status.darkColors) {
 			return themeMode === 'dark' ? status.darkColors : status.lightColors;
 		}
-		if (status.backgroundColor && status.textColor) {
-			return { backgroundColor: status.backgroundColor, textColor: status.textColor };
+		// 向后兼容:读取旧格式颜色
+		const bg = getLegacyColor(status, 'backgroundColor');
+		const text = getLegacyColor(status, 'textColor');
+		if (bg && text) {
+			return { backgroundColor: bg, textColor: text };
 		}
 		return null;
 	}
@@ -181,9 +187,12 @@ export class TaskStatusCard {
 	private ensureThemeColors(status: TaskStatus): void {
 		if (status.lightColors && status.darkColors) return;
 
-		if (status.backgroundColor && status.textColor) {
+		// 向后兼容:读取旧格式颜色
+		const bg = getLegacyColor(status, 'backgroundColor');
+		const text = getLegacyColor(status, 'textColor');
+		if (bg && text) {
 			if (!status.lightColors) {
-				status.lightColors = { backgroundColor: status.backgroundColor, textColor: status.textColor };
+				status.lightColors = { backgroundColor: bg, textColor: text };
 			}
 			if (!status.darkColors) {
 				status.darkColors = { backgroundColor: '#2d333b', textColor: '#adbac7' };

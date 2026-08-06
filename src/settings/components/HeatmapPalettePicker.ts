@@ -54,11 +54,11 @@ export class HeatmapPalettePicker {
 				await this.config.onPaletteChange(palette.key);
 			};
 
-			chip.addEventListener('click', select);
+			chip.addEventListener('click', () => { void select(); });
 			chip.addEventListener('keydown', (e) => {
 				if (e.key === 'Enter' || e.key === ' ') {
 					e.preventDefault();
-					select();
+					void select();
 				}
 			});
 		});

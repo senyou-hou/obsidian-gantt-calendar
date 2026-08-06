@@ -1,12 +1,12 @@
 import { App } from 'obsidian';
 import { BaseViewRenderer } from './BaseViewRenderer';
-import { isToday, isThisWeek, isThisMonth } from '../dateUtils/dateUtilsIndex';
-import type { IPluginContext,  GCTask, TagFilterState } from '../types';
-import { registerTaskContextMenu } from '../contextMenu/contextMenuIndex';
+import type { IPluginContext,  GCTask } from '../types';
+import { getTaskDateField } from '../types';
 import { sortTasks } from '../tasks/taskSorter';
 import { ViewClasses, withModifiers } from '../utils/bem';
 import { TaskCardComponent, TaskViewConfig } from '../components/TaskCard';
 import { Logger } from '../utils/logger';
+import { i18n } from '../i18n/i18n';
 
 /**
  * 任务视图渲染器
@@ -72,7 +72,7 @@ export class TaskViewRenderer extends BaseViewRenderer {
 		return this.timeFieldFilter;
 	}
 
-	public setTimeFilterField(value: any): void {
+	public setTimeFilterField(value: 'createdDate' | 'startDate' | 'scheduledDate' | 'dueDate' | 'completionDate' | 'cancelledDate'): void {
 		this.timeFieldFilter = value;
 		this.saveTimeFieldFilter().catch(err => {
 			Logger.error('TaskView', 'Failed to save time field filter', err);
@@ -103,7 +103,7 @@ export class TaskViewRenderer extends BaseViewRenderer {
 		const taskRoot = container.createDiv(withModifiers(ViewClasses.block, ViewClasses.modifiers.task));
 
 		this.taskListContainer = taskRoot;
-		this.loadTaskList(taskRoot);
+		void this.loadTaskList(taskRoot);
 	}
 
 	/**
@@ -119,7 +119,7 @@ export class TaskViewRenderer extends BaseViewRenderer {
 	 */
 	public refreshTaskList(): void {
 		if (this.taskListContainer) {
-			this.loadTaskList(this.taskListContainer);
+			void this.loadTaskList(this.taskListContainer);
 		}
 	}
 
@@ -128,7 +128,7 @@ export class TaskViewRenderer extends BaseViewRenderer {
 	 */
 	private async loadTaskList(listContainer: HTMLElement): Promise<void> {
 		listContainer.empty();
-		listContainer.createEl('div', { text: '加载中...', cls: 'gantt-task-empty' });
+		listContainer.createEl('div', { text: i18n.t('common.loading'), cls: 'gantt-task-empty' });
 
 		try {
 			let tasks: GCTask[] = this.plugin.taskCache.getAllTasks();
@@ -161,7 +161,7 @@ export class TaskViewRenderer extends BaseViewRenderer {
 				}
 
 				tasks = tasks.filter(task => {
-					const dateValue = (task as any)[this.timeFieldFilter];
+					const dateValue = getTaskDateField(task, this.timeFieldFilter);
 					if (!dateValue) return false;
 					const taskDate = new Date(dateValue);
 					if (isNaN(taskDate.getTime())) return false;
@@ -178,7 +178,7 @@ export class TaskViewRenderer extends BaseViewRenderer {
 			listContainer.empty();
 
 			if (tasks.length === 0) {
-				listContainer.createEl('div', { text: '未找到符合条件的任务', cls: 'gantt-task-empty' });
+				listContainer.createEl('div', { text: i18n.t('views.taskView.noTasks'), cls: 'gantt-task-empty' });
 				return;
 			}
 
@@ -186,7 +186,7 @@ export class TaskViewRenderer extends BaseViewRenderer {
 		} catch (error) {
 			Logger.error('TaskView', 'Error rendering task view', error);
 			listContainer.empty();
-			listContainer.createEl('div', { text: '加载任务时出错', cls: 'gantt-task-empty' });
+			listContainer.createEl('div', { text: i18n.t('views.taskView.loadError'), cls: 'gantt-task-empty' });
 		}
 	}
 
@@ -202,7 +202,7 @@ export class TaskViewRenderer extends BaseViewRenderer {
 			plugin: this.plugin,
 			onClick: (task) => {
 				// 刷新任务列表
-				this.loadTaskList(listContainer);
+				void this.loadTaskList(listContainer);
 			},
 		}).render();
 	}

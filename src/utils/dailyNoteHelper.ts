@@ -6,6 +6,7 @@
 
 import { App, Notice, TFile, TFolder } from 'obsidian';
 import type { GanttCalendarSettings } from '../settings';
+import { i18n } from '../i18n/i18n';
 import { formatDate } from '../dateUtils/dateUtilsIndex';
 import { Logger } from './logger';
 import type { DailyNoteIndex } from './dailyNoteSettingsBridge';
@@ -118,7 +119,7 @@ export async function createTaskInDailyNote(
 				{ confirmText: '创建', cancelText: '取消' }
 			);
 			if (!confirmed) {
-				new Notice('已取消创建任务');
+				new Notice(i18n.t('dailyNote.createCancelled'));
 				return;
 			}
 			file = await createDailyNote(momentDate);
@@ -127,7 +128,7 @@ export async function createTaskInDailyNote(
 
 		if (file) {
 			await insertTaskToFile(app, file, taskData, settings.newTaskHeading);
-			new Notice('已添加任务到 Daily Note');
+			new Notice(i18n.t('dailyNote.taskAdded'));
 		}
 		return;
 	}
@@ -166,7 +167,7 @@ async function handleMissingDailyNote(
 	);
 
 	if (!confirmed) {
-		new Notice('已取消创建任务');
+		new Notice(i18n.t('dailyNote.createCancelled'));
 		return;
 	}
 
@@ -177,11 +178,11 @@ async function handleMissingDailyNote(
 		const abstractFile = app.vault.getAbstractFileByPath(filePath);
 		if (abstractFile instanceof TFile) {
 			await insertTaskToFile(app, abstractFile, taskData, settings.newTaskHeading);
-			new Notice('已创建 Daily Note 并添加任务');
+			new Notice(i18n.t('dailyNote.createdAndAdded'));
 		}
 	} catch (error) {
 		Logger.error('DailyNoteHelper', 'Error creating daily note:', error);
-		new Notice('创建 Daily Note 失败: ' + (error as Error).message);
+		new Notice(i18n.t('dailyNote.createFailed', { error: (error as Error).message }));
 	}
 }
 
@@ -229,10 +230,10 @@ function replaceTemplateVariables(content: string, filePath: string): string {
 	// 先处理带格式和偏移的复杂模式 {{date:FORMAT}}、{{date+1d:FORMAT}}
 	content = content.replace(
 		/{{\s*(date|time)\s*(([+-]\d+)([yqmwdhs]))?\s*(:.+?)?}}/gi,
-		(_, _key, _calc, delta, unit, fmt) => {
+		(_match: string, _key: string, _calc?: string, delta?: string, unit?: string, fmt?: string) => {
 			const current = date.clone();
 			if (delta && unit) {
-				current.add(parseInt(delta, 10), unit);
+				current.add(parseInt(delta, 10), unit as unknown as 'y' | 'Q' | 'M' | 'w' | 'd' | 'h' | 'm' | 's' | 'ms');
 			}
 			if (fmt) {
 				return current.format(fmt.substring(1).trim());
@@ -291,9 +292,11 @@ async function insertTaskToFile(
  * 序列化新任务为文本行
  */
 function serializeNewTask(taskData: CreateTaskData, app: App): string {
-	const plugin = (app as any).plugins.plugins['gantt-calendar'];
-	const globalFilter = plugin?.settings?.globalTaskFilter || '';
-	const enabledFormats = plugin?.settings?.enabledTaskFormats || ['tasks'];
+	// Access Obsidian internal plugin API (not in public types)
+	const plugin = (app as unknown as Record<string, Record<string, Record<string, unknown>>>).plugins.plugins['gantt-calendar'] as Record<string, unknown> | undefined;
+	const settings = plugin?.settings as Record<string, unknown> | undefined;
+	const globalFilter: string = (settings?.globalTaskFilter as string) || '';
+	const enabledFormats: string[] = (settings?.enabledTaskFormats as string[]) || ['tasks'];
 	const format = enabledFormats.includes('dataview') ? 'dataview' : 'tasks';
 
 	const parts: string[] = [];

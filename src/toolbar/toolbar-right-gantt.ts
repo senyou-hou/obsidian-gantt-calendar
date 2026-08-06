@@ -1,3 +1,4 @@
+import type { IPluginContext } from '../types';
 import type { GanttViewRenderer } from '../views/GanttView';
 import { renderStatusFilterButton } from './components/status-filter';
 import { renderRefreshButton } from './components/refresh-button';
@@ -8,7 +9,9 @@ import { renderTagFilterButton } from './components/tag-filter';
 import { renderCreateTaskButton } from './components/create-task-button';
 import { renderSyncButton } from './components/sync-button';
 import { syncFeishuTasks } from '../commands/feishuCommands';
+import type GanttCalendarPlugin from '../../main';
 import { ToolbarClasses } from '../utils/bem';
+import { i18n } from '../i18n/i18n';
 
 /**
  * 工具栏右侧区域 - 甘特视图功能区
@@ -26,7 +29,7 @@ export class ToolbarRightGantt {
 		ganttRenderer: GanttViewRenderer,
 		onRefresh: () => Promise<void>,
 		onRender: () => void = () => {},
-		plugin?: any
+		plugin?: IPluginContext
 	): void {
 		container.empty();
 
@@ -93,11 +96,11 @@ export class ToolbarRightGantt {
 		// 飞书同步按钮
 		if (plugin) {
 			renderSyncButton(container, async () => {
-				await syncFeishuTasks(plugin);
+				await syncFeishuTasks(plugin as GanttCalendarPlugin);
 			});
 		}
 
 		// 刷新按钮（所有视图共有，始终在最右边）
-		renderRefreshButton(container, onRefresh, '刷新甘特图');
+		renderRefreshButton(container, onRefresh, i18n.t('toolbar.refresh.refreshGantt'));
 	}
 }

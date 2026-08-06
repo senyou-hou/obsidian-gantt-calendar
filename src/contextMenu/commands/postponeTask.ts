@@ -1,7 +1,9 @@
 import { App, Notice } from 'obsidian';
 import type { GCTask } from '../../types';
+import type { TaskUpdates } from '../../tasks/taskSerializer';
 import { updateTaskProperties } from '../../tasks/taskUpdater';
 import { Logger } from '../../utils/logger';
+import { i18n } from '../../i18n/i18n';
 
 /**
  * 任务延期（增加天数或设置截止日期）
@@ -21,7 +23,7 @@ export async function postponeTask(
 	fromNow = false
 ): Promise<void> {
 	try {
-		const updates: any = {};
+		const updates: TaskUpdates = {};
 		let newDate: Date;
 
 		if (fromNow) {
@@ -45,9 +47,9 @@ export async function postponeTask(
 		onRefresh();
 
 		const dateStr = newDate.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-		new Notice(fromNow ? `截止日期已设置为 ${dateStr}` : `任务已延期 ${days} 天，到期 ${dateStr}`);
+		new Notice(fromNow ? i18n.t('contextMenu.commands.dueDateSet', { date: dateStr }) : i18n.t('contextMenu.commands.postponed', { days, date: dateStr }));
 	} catch (err) {
 		Logger.error('postponeTask', 'Failed to postpone task', err);
-		new Notice('延期失败');
+		new Notice(i18n.t('contextMenu.commands.postponeFailed'));
 	}
 }

@@ -1,14 +1,15 @@
 import { App } from 'obsidian';
-import type { GCTask } from '../../types';
+import type { GCTask, IPluginContext } from '../../types';
 import type { TaskCardConfig, TimeFieldConfig } from './TaskCardConfig';
-import { TaskCardClasses, TimeBadgeClasses } from '../../utils/bem';
+import { TaskCardClasses, TimeBadgeClasses, setCssProps } from '../../utils/bem';
 import { registerTaskContextMenu } from '../../contextMenu/contextMenuIndex';
+import { i18n } from '../../i18n/i18n';
 import { openFileInExistingLeaf } from '../../utils/fileOpener';
 import { updateTaskCompletion } from '../../tasks/taskUpdater';
 import { completeRecurringTask } from '../../tasks/recurringTaskCompleter';
 import { isVirtualTask, getVirtualMetadata } from '../../tasks/virtualTaskGenerator';
 import { getStatusColor, DEFAULT_TASK_STATUSES, getCurrentThemeMode } from '../../tasks/taskStatus';
-import { RegularExpressions } from '../../utils/RegularExpressions';
+
 import { formatDate } from '../../dateUtils/dateUtilsIndex';
 import { toISOStringLocal } from '../../dateUtils/timezone';
 import { TooltipManager } from '../../utils/tooltipManager';
@@ -22,9 +23,9 @@ import { LinkRenderer } from '../../utils/linkRenderer';
  */
 export class TaskCardRenderer {
 	private app: App;
-	private plugin: any;
+	private plugin: IPluginContext;
 
-	constructor(app: App, plugin: any) {
+	constructor(app: App, plugin: IPluginContext) {
 		this.app = app;
 		this.plugin = plugin;
 	}
@@ -94,57 +95,61 @@ export class TaskCardRenderer {
 	 * 创建任务复选框
 	 */
 	createTaskCheckbox(task: GCTask, taskItem: HTMLElement): HTMLInputElement {
-		const checkbox = taskItem.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
+		const checkbox = taskItem.createEl('input', { type: 'checkbox' });
 		checkbox.checked = task.completed;
 		checkbox.disabled = false;
 		checkbox.addClass(TaskCardClasses.elements.checkbox);
 
 		// 虚拟任务的 checkbox：点击跳转到源任务
 		if (isVirtualTask(task)) {
-			checkbox.addEventListener('click', async (e) => {
+			checkbox.addEventListener('click', (e) => {
 				e.stopPropagation();
 				e.preventDefault();
-				// 导航到源任务文件
-				const meta = getVirtualMetadata(task);
-				if (meta) {
-					const [filePath, lineStr] = meta.sourceTaskId.split(':');
-					const lineNumber = parseInt(lineStr);
-					await openFileInExistingLeaf(this.app, filePath, lineNumber);
-				}
-				checkbox.checked = false; // 还原 checkbox
+				void (async () => {
+					// 导航到源任务文件
+					const meta = getVirtualMetadata(task);
+					if (meta) {
+						const [filePath, lineStr] = meta.sourceTaskId.split(':');
+						const lineNumber = parseInt(lineStr);
+						await openFileInExistingLeaf(this.app, filePath, lineNumber);
+					}
+					checkbox.checked = false; // 还原 checkbox
+				})();
 			});
 			return checkbox;
 		}
 
 		// 周期性真实任务的 checkbox：完成时创建下一个周期任务
-		checkbox.addEventListener('change', async (e) => {
+		checkbox.addEventListener('change', (e) => {
 			e.stopPropagation();
-			const isNowCompleted = checkbox.checked;
-			try {
-				if (isNowCompleted && task.repeat) {
-					// 周期任务完成流程
-					const dateField = this.plugin.settings.dateFilterField || 'dueDate';
-					await completeRecurringTask(
-						this.app,
-						task,
-						this.plugin.settings.enabledTaskFormats,
-						dateField
-					);
-				} else {
-					// 普通完成流程
-					await updateTaskCompletion(
-						this.app,
-						task,
-						isNowCompleted,
-						this.plugin.settings.enabledTaskFormats
-					);
+			void (async () => {
+				const isNowCompleted = checkbox.checked;
+				try {
+					if (isNowCompleted && task.repeat) {
+						// 周期任务完成流程
+						const dateField = this.plugin.settings.dateFilterField || 'dueDate';
+						await completeRecurringTask(
+							this.app,
+							task,
+							this.plugin.settings.enabledTaskFormats,
+							dateField
+						);
+					} else {
+						// 普通完成流程
+						await updateTaskCompletion(
+							this.app,
+							task,
+							isNowCompleted,
+							this.plugin.settings.enabledTaskFormats
+						);
+					}
+					taskItem.toggleClass(TaskCardClasses.modifiers.completed, isNowCompleted);
+					taskItem.toggleClass(TaskCardClasses.modifiers.pending, !isNowCompleted);
+				} catch (error) {
+					Logger.error('TaskCardRenderer', 'Error updating task:', error);
+					checkbox.checked = task.completed;
 				}
-				taskItem.toggleClass(TaskCardClasses.modifiers.completed, isNowCompleted);
-				taskItem.toggleClass(TaskCardClasses.modifiers.pending, !isNowCompleted);
-			} catch (error) {
-				Logger.error('TaskCardRenderer', 'Error updating task:', error);
-				checkbox.checked = task.completed;
-			}
+			})();
 		});
 
 		checkbox.addEventListener('click', (e) => {
@@ -263,23 +268,23 @@ export class TaskCardRenderer {
 
 		const dp = task.datePrecision || {};
 		if (config.showCreated && task.createdDate) {
-			this.renderTimeBadge(container, '创建', task.createdDate, TimeBadgeClasses.created, false, dp.createdDate);
+			this.renderTimeBadge(container, i18n.t('taskCard.created'), task.createdDate, TimeBadgeClasses.created, false, dp.createdDate);
 		}
 		if (config.showStart && task.startDate) {
-			this.renderTimeBadge(container, '开始', task.startDate, TimeBadgeClasses.start, false, dp.startDate);
+			this.renderTimeBadge(container, i18n.t('taskCard.start'), task.startDate, TimeBadgeClasses.start, false, dp.startDate);
 		}
 		if (config.showScheduled && task.scheduledDate) {
-			this.renderTimeBadge(container, '计划', task.scheduledDate, TimeBadgeClasses.scheduled, false, dp.scheduledDate);
+			this.renderTimeBadge(container, i18n.t('taskCard.scheduled'), task.scheduledDate, TimeBadgeClasses.scheduled, false, dp.scheduledDate);
 		}
 		if (config.showDue && task.dueDate) {
 			const isOverdue = config.showOverdueIndicator && task.dueDate < new Date() && !task.completed;
-			this.renderTimeBadge(container, '截止', task.dueDate, TimeBadgeClasses.due, isOverdue, dp.dueDate);
+			this.renderTimeBadge(container, i18n.t('taskCard.due'), task.dueDate, TimeBadgeClasses.due, isOverdue, dp.dueDate);
 		}
 		if (config.showCancelled && task.cancelledDate) {
-			this.renderTimeBadge(container, '取消', task.cancelledDate, TimeBadgeClasses.cancelled, false, dp.cancelledDate);
+			this.renderTimeBadge(container, i18n.t('taskCard.cancelled'), task.cancelledDate, TimeBadgeClasses.cancelled, false, dp.cancelledDate);
 		}
 		if (config.showCompletion && task.completionDate) {
-			this.renderTimeBadge(container, '完成', task.completionDate, TimeBadgeClasses.completion, false, dp.completionDate);
+			this.renderTimeBadge(container, i18n.t('taskCard.done'), task.completionDate, TimeBadgeClasses.completion, false, dp.completionDate);
 		}
 	}
 
@@ -365,7 +370,7 @@ export class TaskCardRenderer {
 			if (e.dataTransfer) {
 				e.dataTransfer.effectAllowed = 'move';
 				e.dataTransfer.setData('taskId', `${task.filePath}:${task.lineNumber}`);
-				card.style.opacity = '0.6';
+				setCssProps(card, { opacity: '0.6' });
 
 				// 拖动时取消悬浮窗
 				tooltipManager.cancel();
@@ -373,7 +378,7 @@ export class TaskCardRenderer {
 		});
 
 		card.addEventListener('dragend', () => {
-			card.style.opacity = '1';
+			setCssProps(card, { opacity: '1' });
 		});
 	}
 

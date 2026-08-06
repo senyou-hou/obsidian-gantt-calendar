@@ -1,15 +1,17 @@
 import { Notice, App } from 'obsidian';
 import { BaseViewRenderer } from './BaseViewRenderer';
 import { generateMonthCalendar } from '../calendar/calendarGenerator';
-import type { IPluginContext,  GCTask, TagFilterState } from '../types';
+import type { IPluginContext,  GCTask } from '../types';
+import { getTaskDateField } from '../types';
 import { TaskCardComponent, MonthViewConfig } from '../components/TaskCard';
-import { MonthViewClasses, TaskCardClasses } from '../utils/bem';
+import { MonthViewClasses, TaskCardClasses, setCssProps } from '../utils/bem';
 import { Logger } from '../utils/logger';
 import { TooltipManager } from '../utils/tooltipManager';
 import { updateTaskDateField } from '../tasks/taskUpdater';
 import { sortTasks } from '../tasks/taskSorter';
 import { toISOStringLocal, createDate } from '../dateUtils/timezone';
 import { generateVirtualInstances } from '../tasks/virtualTaskGenerator';
+import { i18n } from '../i18n/i18n';
 
 /**
  * 月视图渲染器
@@ -31,18 +33,18 @@ export class MonthViewRenderer extends BaseViewRenderer {
 			if (e.dataTransfer) {
 				e.dataTransfer.dropEffect = 'move';
 			}
-			dayCell.style.backgroundColor = 'var(--background-modifier-hover)';
+			setCssProps(dayCell, { backgroundColor: 'var(--background-modifier-hover)' });
 		});
 
 		dayCell.addEventListener('dragleave', (e: DragEvent) => {
 			if (e.target === dayCell) {
-				dayCell.style.backgroundColor = '';
+				setCssProps(dayCell, { backgroundColor: '' });
 			}
 		});
 
-		dayCell.addEventListener('drop', async (e: DragEvent) => {
+		dayCell.addEventListener('drop', (e: DragEvent) => {
 			e.preventDefault();
-			dayCell.style.backgroundColor = '';
+			setCssProps(dayCell, { backgroundColor: '' });
 
 			const taskId = e.dataTransfer?.getData('taskId');
 			if (!taskId) return;
@@ -59,20 +61,33 @@ export class MonthViewRenderer extends BaseViewRenderer {
 
 			const dateFieldName = this.plugin.settings.dateFilterField || 'dueDate';
 
-			try {
-				this.clearTaskTooltips();
-				await updateTaskDateField(
-					this.app,
-					sourceTask,
-					dateFieldName,
-					targetDate,
-					this.plugin.settings.enabledTaskFormats
-				);
-				Logger.debug('MonthView', 'Task drag-drop update successful', { taskId, dateField: dateFieldName, targetDate });
-			} catch (error) {
-				Logger.error('MonthView', 'Error updating task date:', error);
-				new Notice('更新任务日期失败');
-			}
+			void (async () => {
+				try {
+					this.clearTaskTooltips();
+
+					// 月视图拖拽只改日期：保留任务原有时间，避免被重置为 00:00
+					const newDate = new Date(targetDate);
+					const originalValue = getTaskDateField(sourceTask, dateFieldName);
+					if (originalValue) {
+						const originalDate = new Date(originalValue);
+						if (!isNaN(originalDate.getTime())) {
+							newDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), 0);
+						}
+					}
+
+					await updateTaskDateField(
+						this.app,
+						sourceTask,
+						dateFieldName,
+						newDate,
+						this.plugin.settings.enabledTaskFormats
+					);
+					Logger.debug('MonthView', 'Task drag-drop update successful', { taskId, dateField: dateFieldName, newDate });
+				} catch (error) {
+					Logger.error('MonthView', 'Error updating task date:', error);
+					new Notice(i18n.t('views.dayView.updateDateFailed'));
+				}
+			})();
 		});
 	}
 
@@ -86,8 +101,8 @@ export class MonthViewRenderer extends BaseViewRenderer {
 
 		// 星期标签 - 第一行
 		const startOnMonday = !!(this.plugin?.settings?.startOnMonday);
-		const labelsSunFirst = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-		const labelsMonFirst = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+		const labelsSunFirst = i18n.t('views.monthView.weekdays') as unknown as string[];
+		const labelsMonFirst = i18n.t('views.monthView.weekdaysMon') as unknown as string[];
 
 		// 创建第一列的空占位（第1行第1列）
 		const emptyPlaceholder = monthContainer.createEl('div', { cls: MonthViewClasses.elements.weekday });
@@ -119,8 +134,7 @@ export class MonthViewRenderer extends BaseViewRenderer {
 			const weekNum = monthContainer.createDiv(MonthViewClasses.elements.weekNumber);
 			weekNum.createEl('span', { text: `W${week.weekNumber}` });
 			// 设置grid位置：第(weekIndex + 2)行，第1列
-			weekNum.style.gridRow = `${weekIndex + 2}`;
-			weekNum.style.gridColumn = '1';
+			setCssProps(weekNum, { gridRow: `${weekIndex + 2}`, gridColumn: '1' });
 
 			// 一周的日期 - 直接放在容器中，设置grid位置
 			week.days.forEach((day, dayIndex) => {
@@ -129,8 +143,7 @@ export class MonthViewRenderer extends BaseViewRenderer {
 				// 添加日期标识，用于增量刷新时定位
 				dayEl.dataset.date = toISOStringLocal(day.date);
 				// 设置grid位置：第(weekIndex + 2)行，第(dayIndex + 2)列
-				dayEl.style.gridRow = `${weekIndex + 2}`;
-				dayEl.style.gridColumn = `${dayIndex + 2}`;
+				setCssProps(dayEl, { gridRow: `${weekIndex + 2}`, gridColumn: `${dayIndex + 2}` });
 
 				// 日期头部：包含日期数字和农历文本
 				const dayHeader = dayEl.createDiv(MonthViewClasses.elements.dayHeader);
@@ -163,7 +176,7 @@ export class MonthViewRenderer extends BaseViewRenderer {
 
 				// 任务列表
 				const tasksContainer = dayEl.createDiv(MonthViewClasses.elements.tasks);
-				this.loadMonthViewTasks(tasksContainer, day.date, allVirtualInstances);
+				void this.loadMonthViewTasks(tasksContainer, day.date, allVirtualInstances);
 
 				// 设置拖放目标
 				this.setupDragDropForDayCell(dayEl, day.date);
@@ -192,7 +205,7 @@ export class MonthViewRenderer extends BaseViewRenderer {
 	 * 增量刷新：只重新加载任务内容，不重建DOM
 	 */
 	public refreshTasks(): void {
-		const container = document.querySelector('.gc-view.gc-view--month') as HTMLElement;
+		const container = activeDocument.querySelector('.gc-view.gc-view--month') as HTMLElement;
 		if (!container) return;
 
 		// 获取所有日期格子的任务容器
@@ -202,7 +215,7 @@ export class MonthViewRenderer extends BaseViewRenderer {
 			const dateStr = dayCell?.dataset.date;
 			if (dateStr) {
 				const date = createDate(dateStr);
-				this.loadMonthViewTasks(tasksContainer as HTMLElement, date);
+				void this.loadMonthViewTasks(tasksContainer as HTMLElement, date);
 			}
 		});
 	}
@@ -230,7 +243,7 @@ export class MonthViewRenderer extends BaseViewRenderer {
 
 			// 筛选当天真实任务
 			let currentDayTasks = tasks.filter(task => {
-				const dateValue = (task as any)[dateField];
+				const dateValue = getTaskDateField(task, dateField);
 				if (!dateValue) return false;
 
 				const taskDate = new Date(dateValue);
@@ -244,7 +257,7 @@ export class MonthViewRenderer extends BaseViewRenderer {
 			let virtualForDay: GCTask[] = [];
 			if (precomputedVirtualInstances) {
 				virtualForDay = precomputedVirtualInstances.filter(task => {
-					const dateValue = (task as any)[dateField];
+					const dateValue = getTaskDateField(task, dateField);
 					if (!dateValue) return false;
 					const taskDate = new Date(dateValue);
 					if (isNaN(taskDate.getTime())) return false;
@@ -317,7 +330,7 @@ export class MonthViewRenderer extends BaseViewRenderer {
 		const selector = "." + MonthViewClasses.elements.lunarText;
 		const texts = container.querySelectorAll(selector);
 		texts.forEach((el: Element) => {
-			(el as HTMLElement).style.fontSize = fontSize + "px";
+			setCssProps(el as HTMLElement, { fontSize: fontSize + 'px' });
 		});
 	}
 }

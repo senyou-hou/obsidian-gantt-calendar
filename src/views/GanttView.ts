@@ -7,7 +7,6 @@
 import { Notice } from 'obsidian';
 import { BaseViewRenderer } from './BaseViewRenderer';
 import type { GCTask, SortState, TagFilterState } from '../types';
-import { DEFAULT_TAG_FILTER_STATE } from '../types';
 import { sortTasks } from '../tasks/taskSorter';
 import { GanttClasses } from '../utils/bem';
 import { Logger } from '../utils/logger';
@@ -17,9 +16,10 @@ import {
 	TaskDataAdapter,
 	type GanttChartConfig,
 	type DateFieldType,
-	
+
 	TimeGranularity
 } from '../gantt';
+import { i18n } from '../i18n/i18n';
 
 /**
  * 甘特图视图渲染器
@@ -129,7 +129,7 @@ export class GanttViewRenderer extends BaseViewRenderer {
 	 */
 	private restoreScrollPosition(): void {
 		if (this.ganttWrapper) {
-			requestAnimationFrame(() => {
+			window.requestAnimationFrame(() => {
 				this.ganttWrapper?.setScrollPosition(this.scrollLeftPosition, this.scrollTopPosition);
 			});
 		}
@@ -228,7 +228,7 @@ export class GanttViewRenderer extends BaseViewRenderer {
 		const root = container.createDiv('gc-view gc-view--gantt');
 
 		// 加载并渲染任务
-		this.loadAndRenderGantt(root);
+		void this.loadAndRenderGantt(root);
 	}
 
 	/**
@@ -287,9 +287,9 @@ export class GanttViewRenderer extends BaseViewRenderer {
 				arrow_curve: 5,
 				padding: 18,
 				date_format: 'YYYY-MM-DD',
-				on_click: (task) => this.handleTaskClick(task),
-				on_date_change: (task, start, end) => this.handleDateChange(task, start, end),
-				on_progress_change: (task, progress) => this.handleProgressChange(task, progress)
+				on_click: (task) => { void this.handleTaskClick(task); },
+				on_date_change: (task, start, end) => { void this.handleDateChange(task, start, end); },
+				on_progress_change: (task, progress) => { void this.handleProgressChange(task, progress); }
 				// tooltip 由全局 TooltipManager 统一管理
 			};
 
@@ -320,7 +320,7 @@ export class GanttViewRenderer extends BaseViewRenderer {
 			Logger.error('GanttView', 'Error rendering gantt:', error);
 			this.isRefreshing = false;
 			root.createEl('div', {
-				text: '渲染甘特图时出错: ' + (error as Error).message,
+				text: i18n.t('views.ganttView.renderError') + (error as Error).message,
 				cls: 'gantt-error'
 			});
 		}
@@ -338,31 +338,31 @@ export class GanttViewRenderer extends BaseViewRenderer {
 		});
 
 		emptyState.createEl('h3', {
-			text: '暂无可显示的任务',
+			text: i18n.t('views.ganttView.emptyTitle'),
 			cls: 'gantt-empty-title'
 		});
 
 		const reasons: string[] = [];
 		const state = this.getStatusFilterState();
 		if (state.selectedStatuses.length > 0) {
-			reasons.push(`当前筛选: ${state.selectedStatuses.length} 个状态`);
+			reasons.push(i18n.t('views.ganttView.currentFilter', { count: state.selectedStatuses.length }));
 		}
 		if (this.tagFilterState.selectedTags.length > 0) {
-			reasons.push(`标签筛选: ${this.tagFilterState.selectedTags.join(', ')}`);
+			reasons.push(i18n.t('views.ganttView.tagFilter', { tags: this.tagFilterState.selectedTags.join(', ') }));
 		}
 		if (!this.getStartField() || !this.getEndField()) {
-			reasons.push('缺少时间字段配置');
+			reasons.push(i18n.t('views.ganttView.missingFieldConfig'));
 		}
 
 		if (reasons.length > 0) {
 			emptyState.createEl('p', {
-				text: '可能的原因: ' + reasons.join(', '),
+				text: i18n.t('views.ganttView.possibleReasons') + reasons.join(', '),
 				cls: 'gantt-empty-reason'
 			});
 		}
 
 		emptyState.createEl('p', {
-			text: '请检查任务是否包含开始和结束日期',
+			text: i18n.t('views.ganttView.checkDatesHint'),
 			cls: 'gantt-empty-hint'
 		});
 	}
@@ -388,7 +388,7 @@ export class GanttViewRenderer extends BaseViewRenderer {
 
 		// 验证日期变更
 		if (!TaskUpdateHandler.validateDateChange(start, end)) {
-			new Notice('无效的日期范围');
+			new Notice(i18n.t('views.ganttView.invalidDateRange'));
 			return;
 		}
 

@@ -12,6 +12,18 @@ import { TFile, ListItemCache } from 'obsidian';
 import type { GCTask } from '../../types';
 import type { TaskFormatType } from '../taskSerializerSymbols';
 
+/**
+ * 任务解析所需的文件元信息（结构子类型）。
+ *
+ * 使用该接口而非直接用 `TFile`，既能接收真实 `TFile`（结构兼容），
+ * 也能在离线/测试场景下传入纯字面量对象，从而避免 `as unknown as TFile`
+ * 类型断言（obsidianmd/no-tfile-tfolder-cast 规则禁止此类断言）。
+ */
+export interface TaskFileRef {
+    path: string;
+    basename: string;
+}
+
 // 导入各步骤的解析函数
 import { parseTaskLine } from './step1';
 import { passesGlobalFilter, removeGlobalFilter } from './step2';
@@ -49,7 +61,7 @@ import { extractTaskDescription, extractTags, extractTicktick, findMetadataValue
  * ```
  */
 export function parseTasksFromListItems(
-    file: TFile,
+    file: TaskFileRef,
     lines: string[],
     listItems: ListItemCache[],
     enabledFormats: TaskFormatType[],
@@ -224,14 +236,15 @@ export function parseTasksFromLines(
     enabledFormats: TaskFormatType[],
     globalTaskFilter?: string
 ): GCTask[] {
-    // 创建一个模拟的 TFile 对象（用于解析，不是真实的文件操作）
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    const mockFile = {
+    // 离线解析场景：仅需 path/basename 元信息，无需真实 TFile。
+    // 通过 TaskFileRef 结构类型直接传字面量，避免 `as unknown as TFile` 断言
+    // （obsidianmd/no-tfile-tfolder-cast 规则禁止对 TFile/TFolder 做类型断言）。
+    const fileRef: TaskFileRef = {
         path: filePath,
         basename: fileName,
-    } as TFile;
+    };
 
-    return parseTasksFromListItems(mockFile, lines, listItems, enabledFormats, globalTaskFilter);
+    return parseTasksFromListItems(fileRef, lines, listItems, enabledFormats, globalTaskFilter);
 }
 
 /**

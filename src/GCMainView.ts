@@ -1,13 +1,14 @@
-import { ItemView, WorkspaceLeaf, setIcon, Notice } from 'obsidian';
-import { CalendarViewType } from './types';
+import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { CalendarViewType, IPluginContext } from './types';
 
-import { getWeekOfDate, formatDate, formatMonth, getTodayDate } from './dateUtils/dateUtilsIndex';
+import { getWeekOfDate, formatDate, getTodayDate } from './dateUtils/dateUtilsIndex';
 import { getTodayInTimezone } from './dateUtils/timezone';
-import { solarToLunar, getShortLunarText } from './lunar/lunar';
+
 import { YearViewRenderer } from './views/YearView';
 import { MonthViewRenderer } from './views/MonthView';
 import { WeekViewRenderer } from './views/WeekView';
 import { DayViewRenderer } from './views/DayView';
+import { i18n } from './i18n/i18n';
 import { TaskViewRenderer } from './views/TaskView';
 import { GanttViewRenderer } from './views/GanttView';
 import { Toolbar } from './toolbar/toolbar';
@@ -19,7 +20,7 @@ export class GCMainView extends ItemView {
 	private currentDate: Date = new Date(); // 将在 onOpen 中通过 getTodayInTimezone() 初始化
 	private viewType: CalendarViewType = 'year';
 	private resizeObserver: ResizeObserver | null = null;
-	private plugin: any;
+	private plugin: IPluginContext;
 	private cacheUpdateListener: (() => void) | null = null;
 
 	// 子视图渲染器
@@ -33,13 +34,13 @@ export class GCMainView extends ItemView {
 	// 工具栏控制器
 	private toolbar: Toolbar;
 
-	constructor(leaf: WorkspaceLeaf, plugin: any) {
+	constructor(leaf: WorkspaceLeaf, plugin: IPluginContext) {
 		super(leaf);
 		this.plugin = plugin;
 		// 使用设置中的默认视图
 		this.viewType = plugin.settings.defaultView || 'year';
 		// 存储 calendarView 引用到 plugin,供子渲染器访问
-		this.plugin.calendarView = this;
+		this.plugin.calendarView = this as unknown as IPluginContext['calendarView'];
 
 		// 初始化子视图渲染器
 		this.yearRenderer = new YearViewRenderer(this.app, plugin);
@@ -58,7 +59,7 @@ export class GCMainView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return 'Gantt Calendar';
+		return 'Gantt calendar';
 	}
 
 	getIcon(): string {
@@ -102,7 +103,7 @@ export class GCMainView extends ItemView {
 				this.monthRenderer.refreshTasks();
 				break;
 			case 'week':
-				this.weekRenderer.refreshTasks();
+				this.weekRenderer.refreshTasks(filePath);
 				break;
 			case 'day':
 				this.dayRenderer.refreshTasks();
@@ -162,7 +163,7 @@ export class GCMainView extends ItemView {
 			});
 
 			this.resizeObserver.observe(content);
-		} catch (e) {
+		} catch {
 			// ResizeObserver not supported, fail silently
 		}
 	}
@@ -170,6 +171,9 @@ export class GCMainView extends ItemView {
 	private render(): void {
 		const startTime = performance.now();
 		Logger.debug('GCMainView', `render() called, viewType: ${this.viewType}`);
+
+		// 全量重建前保存周视图滚动位置，重建后恢复，防止滚动条跳动
+		const weekScrollState = this.viewType === 'week' ? this.captureWeekScroll() : null;
 
 		// 清理上一次渲染的资源
 		this.yearRenderer.runDomCleanups();
@@ -239,11 +243,48 @@ export class GCMainView extends ItemView {
 
 		const elapsed = performance.now() - startTime;
 		Logger.debug('GCMainView', `render() completed in ${elapsed.toFixed(2)}ms`);
+
+		if (weekScrollState) {
+			this.restoreWeekScroll(weekScrollState);
+		}
+	}
+
+	// ===== 周视图滚动位置保护 =====
+
+	/**
+	 * 捕获周视图当前滚动位置（时间轴内部滚动 + 外层瀑布流滚动）
+	 */
+	private captureWeekScroll(): { tasksGridTop: number; viewContentTop: number } {
+		const tasksGrid = this.contentEl.querySelector('.gc-view.gc-view--week .gc-week-view__tasks-grid') as HTMLElement;
+		return {
+			tasksGridTop: tasksGrid ? tasksGrid.scrollTop : 0,
+			viewContentTop: this.contentEl.scrollTop,
+		};
+	}
+
+	/**
+	 * 恢复周视图滚动位置（同步 + rAF 双保险，rAF 兜底异步内容导致的二次钳制）
+	 */
+	private restoreWeekScroll(state: { tasksGridTop: number; viewContentTop: number }): void {
+		const apply = () => {
+			if (!this.contentEl.isConnected) return;
+			if (state.viewContentTop > 0) {
+				this.contentEl.scrollTop = state.viewContentTop;
+			}
+			if (state.tasksGridTop > 0) {
+				const tasksGrid = this.contentEl.querySelector('.gc-view.gc-view--week .gc-week-view__tasks-grid') as HTMLElement;
+				if (tasksGrid) {
+					tasksGrid.scrollTop = state.tasksGridTop;
+				}
+			}
+		};
+		apply();
+		window.requestAnimationFrame(apply);
 	}
 
 	private renderCalendarContent(content: HTMLElement): void {
-		// 瀑布流视图：日/周/任务视图取消内部滚动，由 .view-content 统一滚动
-		const waterfallViews: CalendarViewType[] = ['day', 'week', 'task'];
+		// 瀑布流视图：日/周/任务/年视图取消内部滚动，由 .view-content 统一滚动
+		const waterfallViews: CalendarViewType[] = ['day', 'week', 'task', 'year'];
 		const isWaterfall = waterfallViews.includes(this.viewType);
 		content.style.overflow = isWaterfall ? 'visible' : '';
 		const viewContent = content.parentElement;
@@ -365,9 +406,9 @@ export class GCMainView extends ItemView {
 			case 'day':
 				return formatDate(this.currentDate, 'MM/dd');
 			case 'task':
-				return '任务视图';
+				return i18n.t('views.taskView.title');
             case 'gantt':
-                return '甘特图视图';
+                return i18n.t('views.ganttView.title');
 		}
 	}
 }

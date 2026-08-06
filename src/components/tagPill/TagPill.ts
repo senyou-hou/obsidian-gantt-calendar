@@ -4,7 +4,7 @@
  * 用于在插件中统一显示任务标签的样式和交互
  */
 
-import { TagPillOptions, TagPillState } from './types';
+import { TagPillOptions } from './types';
 import { TagClasses } from '../../utils/bem';
 
 /**
@@ -34,7 +34,7 @@ export class TagPill {
 		const finalColorIndex = colorIndex ?? this.getColorIndex(label);
 
 		// 创建容器元素
-		const pillEl = document.createElement('span');
+		const pillEl = activeDocument.createElement('span');
 		pillEl.addClass(TagClasses.block);
 		pillEl.addClass(TagClasses.colors[finalColorIndex]);
 
@@ -65,14 +65,14 @@ export class TagPill {
 		}
 
 		// 创建标签文本元素
-		const labelEl = document.createElement('span');
+		const labelEl = activeDocument.createElement('span');
 		labelEl.addClass(TagClasses.elements.label);
 		labelEl.textContent = showHash ? `#${label}` : label;
 		pillEl.appendChild(labelEl);
 
 		// 添加后缀（如数量徽章）
 		if (suffix) {
-			const suffixEl = document.createElement('span');
+			const suffixEl = activeDocument.createElement('span');
 			suffixEl.addClass(TagClasses.elements.suffix);
 			suffixEl.textContent = suffix;
 			pillEl.appendChild(suffixEl);

@@ -1,5 +1,6 @@
 import { Notice, type App } from 'obsidian';
 import { RegularExpressions } from './RegularExpressions';
+import { i18n } from '../i18n/i18n';
 import { openFileInExistingLeaf } from './fileOpener';
 
 /**
@@ -74,15 +75,17 @@ export class LinkRenderer {
 				link.setAttr('data-href', notePath);
 				link.setAttr('title', `打开：${notePath}`);
 				link.href = 'javascript:void(0)';
-				link.addEventListener('click', async (e) => {
+				link.addEventListener('click', (e) => {
 					e.preventDefault();
 					e.stopPropagation();
-					const file = app.metadataCache.getFirstLinkpathDest(notePath, '');
-					if (file) {
-						await openFileInExistingLeaf(app, file.path, 0);
-					} else {
-						new Notice(`文件未找到：${notePath}`);
-					}
+					void (async () => {
+						const file = app.metadataCache.getFirstLinkpathDest(notePath, '');
+						if (file) {
+							await openFileInExistingLeaf(app, file.path, 0);
+						} else {
+							new Notice(i18n.t('common.fileNotFound', { path: notePath }));
+						}
+					})();
 				});
 			} else if (m.type === 'markdown') {
 				const displayText = m.groups[1]; // [text]

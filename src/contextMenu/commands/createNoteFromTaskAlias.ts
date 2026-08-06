@@ -1,5 +1,6 @@
 import { App, Modal, Setting } from 'obsidian';
 import type { GCTask } from '../../types';
+import { i18n } from '../../i18n/i18n';
 import {
 	createNoteFromTaskCore,
 	checkExistingWikiLink,
@@ -8,6 +9,7 @@ import {
 	sanitizeFileName,
 	type CreateNoteOptions,
 } from './createNoteFromTask';
+import { setCssProps } from '../../utils/bem';
 
 /**
  * 创建任务别名笔记
@@ -68,20 +70,20 @@ class AliasInputModal extends Modal {
 	onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.createEl('h2', { text: '输入笔记名称' });
+		contentEl.createEl('h2', { text: i18n.t('contextMenu.commands.enterNoteName') });
 
 		const input = contentEl.createEl('input', { type: 'text', value: '' });
 		input.placeholder = '请输入笔记名称(任务描述为笔记别名)';
-		input.style.width = '100%';
+		setCssProps(input, { width: '100%' });
 		input.focus();
 
 		new Setting(contentEl)
-			.addButton(btn => btn.setButtonText('确定').setCta().onClick(() => {
+			.addButton(btn => btn.setButtonText(i18n.t('common.ok')).setCta().onClick(() => {
 				const val = input.value.trim();
 				this.close();
 				this.onSubmit(val || null);
 			}))
-			.addButton(btn => btn.setButtonText('取消').onClick(() => {
+			.addButton(btn => btn.setButtonText(i18n.t('common.cancel')).onClick(() => {
 				this.close();
 				this.onSubmit(null);
 			}));

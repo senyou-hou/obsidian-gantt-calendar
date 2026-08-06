@@ -1,8 +1,9 @@
-import { App, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, TFile, MarkdownRenderer, Component } from 'obsidian';
+import { App, WorkspaceLeaf, WorkspaceSplit, WorkspaceTabs, WorkspaceContainer, WorkspaceItem, TFile, MarkdownRenderer, Component } from 'obsidian';
 import { findDailyNoteForDate, DailyNoteIndex } from '../utils/dailyNoteSettingsBridge';
 import type { GanttCalendarSettings } from '../settings/types';
 import { Logger } from '../utils/logger';
-import { EmbeddedEditorClasses, DayViewClasses } from '../utils/bem';
+import { EmbeddedEditorClasses, DayViewClasses, setCssProps } from '../utils/bem';
+import { i18n } from '../i18n/i18n';
 
 /**
  * WorkspaceLeaf / WorkspaceSplit 内部接口
@@ -14,10 +15,14 @@ interface InternalWorkspaceLeaf extends WorkspaceLeaf {
 
 interface InternalWorkspaceSplit extends WorkspaceSplit {
     containerEl: HTMLElement;
-    getRoot: () => any;
-    getContainer: () => any;
-    children: any[];
-    replaceChild: (index: number, child: any) => void;
+    getRoot: () => WorkspaceItem;
+    getContainer: () => WorkspaceContainer;
+    children: WorkspaceItem[];
+    replaceChild: (index: number, child: WorkspaceItem) => void;
+}
+
+interface InternalWorkspaceTabs extends WorkspaceTabs {
+    children: WorkspaceItem[];
 }
 
 type ConstructableWorkspaceSplit = new (ws: App['workspace'], dir: 'horizontal' | 'vertical') => WorkspaceSplit;
@@ -27,10 +32,12 @@ type ConstructableWorkspaceSplit = new (ws: App['workspace'], dir: 'horizontal' 
  * Obsidian 1.8.7+ 在 createLeafInParent 时会激活新 leaf，需要阻止
  */
 function suppressSetActiveLeaf(app: App): () => void {
-    const original = app.workspace.setActiveLeaf.bind(app.workspace);
-    app.workspace.setActiveLeaf = () => {};
+    // 通过类型擦除访问已弃用的 setActiveLeaf (Obsidian 1.8.7+ 行为规避)
+    const ws = app.workspace as unknown as Record<string, (...args: unknown[]) => void>;
+    const original = ws.setActiveLeaf.bind(app.workspace); // eslint-disable-line @typescript-eslint/no-unsafe-assignment -- Obsidian internal API returns any
+    ws.setActiveLeaf = () => {};
     return () => {
-        app.workspace.setActiveLeaf = original;
+        ws.setActiveLeaf = original; // eslint-disable-line @typescript-eslint/no-unsafe-assignment -- Obsidian internal API returns any
     };
 }
 
@@ -69,7 +76,7 @@ export class EmbeddedNoteEditor {
         const file = findDailyNoteForDate(date, dailyNoteIndex, this.app, settings);
 
         if (!file) {
-            this.showEmpty('未找到 Daily Note');
+            this.showEmpty(i18n.t('embeddedEditor.dailyNoteNotFound'));
             return;
         }
 
@@ -98,8 +105,8 @@ export class EmbeddedNoteEditor {
             ) as InternalWorkspaceSplit;
 
             // 让 split 能找到正确的 rootSplit 和 container
-            this.rootSplit.getRoot = () => this.app.workspace.rootSplit!;
-            this.rootSplit.getContainer = () => this.app.workspace.rootSplit!;
+            this.rootSplit.getRoot = () => this.app.workspace.rootSplit;
+            this.rootSplit.getContainer = () => this.app.workspace.rootSplit;
 
             // 2. 将 split 的 DOM 挂载到我们的容器中
             this.container.empty();
@@ -143,9 +150,9 @@ export class EmbeddedNoteEditor {
     private unwrapTabs(): void {
         if (!this.rootSplit) return;
         try {
-            this.rootSplit.children.forEach((item: any, index: number) => {
-                if (item instanceof WorkspaceTabs && (item as any).children?.length > 0) {
-                    this.rootSplit!.replaceChild(index, (item as any).children[0]);
+            this.rootSplit.children.forEach((item, index) => {
+                if (item instanceof WorkspaceTabs && (item as InternalWorkspaceTabs).children?.length > 0) {
+                    this.rootSplit!.replaceChild(index, (item as InternalWorkspaceTabs).children[0]);
                 }
             });
         } catch (e) {
@@ -212,7 +219,7 @@ export class EmbeddedNoteEditor {
         const state = this.leaf.getViewState();
         if (state?.state) {
             state.state.mode = 'source';
-            this.leaf.setViewState(state);
+            void this.leaf.setViewState(state);
         }
     }
 
@@ -224,7 +231,7 @@ export class EmbeddedNoteEditor {
         const state = this.leaf.getViewState();
         if (state?.state) {
             state.state.mode = 'preview';
-            this.leaf.setViewState(state);
+            void this.leaf.setViewState(state);
         }
     }
 
@@ -232,7 +239,7 @@ export class EmbeddedNoteEditor {
      * 显示空状态消息
      */
     private showEmpty(message: string): void {
-        this.close();
+        void this.close();
         this.container.empty();
         this.container.createEl('div', { text: message, cls: 'gantt-task-empty' });
     }
@@ -245,7 +252,7 @@ export class EmbeddedNoteEditor {
 
         const content = await this.app.vault.read(file);
         if (!content.trim()) {
-            this.container.createEl('div', { text: '无内容', cls: 'gantt-task-empty' });
+            this.container.createEl('div', { text: i18n.t('common.noContent'), cls: 'gantt-task-empty' });
             return;
         }
 
@@ -270,14 +277,11 @@ export class EmbeddedNoteEditor {
 
         // rootSplit 容器填满
         const splitEl = this.rootSplit.containerEl;
-        splitEl.style.height = '100%';
-        splitEl.style.width = '100%';
+        setCssProps(splitEl, { height: '100%', width: '100%' });
 
         // leaf 容器填满并添加自定义 class
         const leafEl = this.leaf.containerEl;
-        leafEl.style.height = '100%';
-        leafEl.style.width = '100%';
-        leafEl.style.overflow = 'hidden';
+        setCssProps(leafEl, { height: '100%', width: '100%', overflow: 'hidden' });
         leafEl.classList.add(EmbeddedEditorClasses.block);
     }
 }

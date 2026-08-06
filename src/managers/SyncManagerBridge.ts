@@ -94,13 +94,15 @@ export class SyncManagerBridge {
 
 		const intervalMs = intervalMinutes * 60 * 1000;
 
-		this.autoSyncTimer = window.setInterval(async () => {
+		this.autoSyncTimer = window.setInterval(() => {
 			Logger.info('SyncManagerBridge', 'Running auto sync...');
-			try {
-				await syncFeishuTasks(this.plugin, { isAutoSync: true });
-			} catch (error) {
-				Logger.error('SyncManagerBridge', 'Auto sync failed', error);
-			}
+			void (async () => {
+				try {
+					await syncFeishuTasks(this.plugin, { isAutoSync: true });
+				} catch (error) {
+					Logger.error('SyncManagerBridge', 'Auto sync failed', error);
+				}
+			})();
 		}, intervalMs);
 
 		Logger.info('SyncManagerBridge', `Auto sync started (interval: ${intervalMinutes} minutes)`);
@@ -111,7 +113,7 @@ export class SyncManagerBridge {
 	 */
 	private stopAutoSync(): void {
 		if (this.autoSyncTimer) {
-			clearInterval(this.autoSyncTimer);
+			window.clearInterval(this.autoSyncTimer);
 			this.autoSyncTimer = undefined;
 			Logger.info('SyncManagerBridge', 'Auto sync stopped');
 		}

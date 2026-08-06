@@ -1,8 +1,9 @@
 import { setIcon } from 'obsidian';
 import type { StatusFilterState } from '../../types';
 import type { TaskStatus } from '../../tasks/taskStatus';
-import { ToolbarClasses } from '../../utils/bem';
+import { setCssProps, ToolbarClasses } from '../../utils/bem';
 import { getStatusColor } from '../../tasks/taskStatus';
+import { i18n } from '../../i18n/i18n';
 
 /** 状态筛选按钮选项 */
 export interface StatusFilterButtonOptions {
@@ -29,7 +30,7 @@ export function renderStatusFilterButton(
 	// 2. 创建筛选按钮
 	const statusBtn = buttonGroup.createEl('button', {
 		cls: ToolbarClasses.components.navButtons.btn,
-		attr: { 'aria-label': '状态筛选' }
+		attr: { 'aria-label': i18n.t('toolbar.statusFilter.ariaLabel') }
 	});
 
 	// 3. 按钮内容：图标 - 使用线条风格的复选框图标
@@ -37,10 +38,9 @@ export function renderStatusFilterButton(
 	setIcon(iconSpan, 'check-square');
 
 	// 5. 创建下拉面板
-	const dropdown = document.createElement('div');
-	dropdown.addClass(classes.dropdown);
-	dropdown.style.display = 'none';
-	document.body.appendChild(dropdown);
+	const dropdown = activeDocument.createElement('div');
+	dropdown.addClass(classes.dropdown, 'gc-u-hidden');
+	activeDocument.body.appendChild(dropdown);
 
 	// 6. 渲染面板内容
 	const renderDropdown = () => {
@@ -48,7 +48,7 @@ export function renderStatusFilterButton(
 
 		// 面板头部
 		const header = dropdown.createEl('div', classes.dropdownHeader);
-		header.createEl('span', { text: '筛选状态' });
+		header.createEl('span', { text: i18n.t('toolbar.statusFilter.header') });
 
 		const state = getCurrentState();
 		const allStatuses = getAvailableStatuses();
@@ -57,7 +57,7 @@ export function renderStatusFilterButton(
 		const list = dropdown.createEl('div', classes.statusList);
 
 		if (allStatuses.length === 0) {
-			list.createEl('div', { text: '暂无可用状态', cls: classes.empty });
+			list.createEl('div', { text: i18n.t('toolbar.statusFilter.empty'), cls: classes.empty });
 			return;
 		}
 
@@ -79,8 +79,7 @@ export function renderStatusFilterButton(
 			label.setText(statusConfig.name);
 			const colors = getStatusColor(statusConfig.key, [statusConfig]);
 			if (colors) {
-				label.style.backgroundColor = colors.bg;
-				label.style.color = colors.text;
+				setCssProps(label, { backgroundColor: colors.bg, color: colors.text });
 			}
 
 			// 点击事件 - 阻止冒泡，保持弹窗打开
@@ -105,29 +104,28 @@ export function renderStatusFilterButton(
 	// 7. 切换下拉显示
 	statusBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
-		const isVisible = dropdown.style.display !== 'none';
+		const isVisible = !dropdown.hasClass('gc-u-hidden');
 		if (isVisible) {
-			dropdown.style.display = 'none';
+			dropdown.addClass('gc-u-hidden');
 		} else {
 			renderDropdown();
 			const rect = statusBtn.getBoundingClientRect();
-			dropdown.style.top = `${rect.bottom + 4}px`;
-			dropdown.style.left = `${rect.left}px`;
-			dropdown.style.display = 'block';
+			setCssProps(dropdown, { top: `${rect.bottom + 4}px`, left: `${rect.left}px` });
+			dropdown.removeClass('gc-u-hidden');
 		}
 	});
 
 	// 8. 点击外部关闭
 	const closeOnClickOutside = (e: MouseEvent) => {
 		if (!dropdown.contains(e.target as Node) && !statusBtn.contains(e.target as Node)) {
-			dropdown.style.display = 'none';
+			dropdown.addClass('gc-u-hidden');
 		}
 	};
-	document.addEventListener('click', closeOnClickOutside);
+	activeDocument.addEventListener('click', closeOnClickOutside);
 
 	// 9. 清理函数
 	const cleanup = () => {
-		document.removeEventListener('click', closeOnClickOutside);
+		activeDocument.removeEventListener('click', closeOnClickOutside);
 		dropdown.remove();
 	};
 

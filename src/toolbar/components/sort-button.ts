@@ -6,7 +6,8 @@
 import { setIcon } from 'obsidian';
 import type { SortState } from '../../types';
 import { SORT_OPTIONS, getSortDisplayText, updateSortState } from '../../tasks/taskSorter';
-import { ToolbarClasses } from '../../utils/bem';
+import { ToolbarClasses, setCssProps } from '../../utils/bem';
+import { i18n } from '../../i18n/i18n';
 
 /**
  * 排序按钮配置选项
@@ -45,7 +46,7 @@ export function renderSortButton(
 	// 创建排序按钮
 	const sortBtn = buttonGroup.createEl('button', {
 		cls: ToolbarClasses.components.navButtons.btn,
-		attr: { 'aria-label': '排序选项' }
+		attr: { 'aria-label': i18n.t('toolbar.sort.ariaLabel') }
 	});
 
 	// 更新按钮显示内容的函数
@@ -78,12 +79,12 @@ export function renderSortButton(
 	updateButtonDisplay();
 
 	// 创建下拉菜单（添加到 body 以便正确定位）
-	const dropdown = document.createElement('div');
+	const dropdown = activeDocument.createElement('div');
 	dropdown.addClass(ToolbarClasses.components.sort.dropdown);
-	dropdown.style.display = 'none';
+	dropdown.addClass('gc-u-hidden');
 
 	// 添加菜单标题
-	dropdown.createEl('div', { text: '排序方式 (点击切换)', cls: ToolbarClasses.components.sort.dropdownHeader });
+	dropdown.createEl('div', { text: i18n.t('toolbar.sort.header'), cls: ToolbarClasses.components.sort.dropdownHeader });
 
 	const menuItems: HTMLElement[] = [];
 
@@ -95,9 +96,9 @@ export function renderSortButton(
 		iconSpan.setText(option.icon);
 
 		const labelSpan = item.createSpan(ToolbarClasses.components.sort.optionLabel);
-		labelSpan.setText(option.label);
+		labelSpan.setText(i18n.t('toolbar.sort.options.' + option.field));
 
-		const indicator = item.createSpan(ToolbarClasses.components.sort.optionIndicator);
+		item.createSpan(ToolbarClasses.components.sort.optionIndicator);
 
 		item.addEventListener('click', (e) => {
 			e.stopPropagation();
@@ -121,38 +122,37 @@ export function renderSortButton(
 	updateMenuActiveStates();
 
 	// 将菜单添加到 body
-	document.body.appendChild(dropdown);
+	activeDocument.body.appendChild(dropdown);
 
 	// 切换菜单显示/隐藏
 	sortBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
-		const isVisible = dropdown.style.display !== 'none';
+		const isVisible = !dropdown.hasClass('gc-u-hidden');
 		if (isVisible) {
-			dropdown.style.display = 'none';
+			dropdown.addClass('gc-u-hidden');
 		} else {
 			// 每次打开菜单时更新状态
 			updateMenuActiveStates();
 			updateButtonDisplay();
 
 			const rect = sortBtn.getBoundingClientRect();
-			dropdown.style.top = `${rect.bottom + 4}px`;
-			dropdown.style.left = `${rect.left}px`;
-			dropdown.style.display = 'block';
+			setCssProps(dropdown, { top: `${rect.bottom + 4}px`, left: `${rect.left}px` });
+			dropdown.removeClass('gc-u-hidden');
 		}
 	});
 
 	// 点击外部关闭菜单
 	const closeDropdown = (e: MouseEvent) => {
 		if (!dropdown.contains(e.target as Node) && !sortBtn.contains(e.target as Node)) {
-			dropdown.style.display = 'none';
+			dropdown.addClass('gc-u-hidden');
 		}
 	};
 
-	document.addEventListener('click', closeDropdown);
+	activeDocument.addEventListener('click', closeDropdown);
 
 	// 清理函数
 	const cleanup = () => {
-		document.removeEventListener('click', closeDropdown);
+		activeDocument.removeEventListener('click', closeDropdown);
 		dropdown.remove();
 	};
 

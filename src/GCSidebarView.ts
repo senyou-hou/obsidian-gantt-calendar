@@ -2,21 +2,23 @@ import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
 import { SidebarClasses, withModifiers } from './utils/bem';
 import { TaskListTab } from './sidebar/TaskListTab';
 import { DailyTimelineTab } from './sidebar/DailyTimelineTab';
-import { Logger } from './utils/logger';
+
+import { i18n } from './i18n/i18n';
+import type { IPluginContext } from './types';
 
 export const GC_SIDEBAR_VIEW_ID = 'gantt-calendar-sidebar-view';
 
 type SidebarTab = 'taskList' | 'dailyTimeline';
 
 export class GCSidebarView extends ItemView {
-	private plugin: any;
+	private plugin: IPluginContext;
 	private currentTab: SidebarTab = 'dailyTimeline';
 	private taskListTab: TaskListTab;
 	private dailyTimelineTab: DailyTimelineTab;
 	private contentContainer: HTMLElement | null = null;
 	private cacheUpdateListener: (() => void) | null = null;
 
-	constructor(leaf: WorkspaceLeaf, plugin: any) {
+	constructor(leaf: WorkspaceLeaf, plugin: IPluginContext) {
 		super(leaf);
 		this.plugin = plugin;
 		this.taskListTab = new TaskListTab(this.app, plugin);
@@ -28,7 +30,7 @@ export class GCSidebarView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return 'Gantt Calendar';
+		return 'Gantt calendar';
 	}
 
 	getIcon(): string {
@@ -84,7 +86,7 @@ export class GCSidebarView extends ItemView {
 		);
 		const taskListIcon = taskListBtn.createSpan();
 		setIcon(taskListIcon, 'list');
-		taskListBtn.createSpan({ text: ' 任务列表' });
+		taskListBtn.createSpan({ text: ' ' + i18n.t('sidebar.tabTitles.taskList') });
 		taskListBtn.addEventListener('click', () => {
 			this.switchTab('taskList');
 		});
@@ -97,7 +99,7 @@ export class GCSidebarView extends ItemView {
 		);
 		const timelineIcon = timelineBtn.createSpan();
 		setIcon(timelineIcon, 'clock');
-		timelineBtn.createSpan({ text: ' 今日时间线' });
+		timelineBtn.createSpan({ text: ' ' + i18n.t('sidebar.tabTitles.dailyTimeline') });
 		timelineBtn.addEventListener('click', () => {
 			this.switchTab('dailyTimeline');
 		});
