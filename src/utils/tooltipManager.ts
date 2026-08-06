@@ -170,9 +170,10 @@ export class TooltipManager {
 		// --- 2. 优先级组 ---
 		if (task.priority && task.priority !== 'normal') {
 			const priorityIcon = this.getPriorityIcon(task.priority);
+			const priorityLabel = i18n.t(`common.priority.${task.priority}`);
 			sections.push({
 				key: 'priority',
-				rows: [{ label: i18n.t('taskCard.priority'), value: `${priorityIcon} ${task.priority}`, valueClass: `priority-${task.priority}` }]
+				rows: [{ label: i18n.t('taskCard.priority'), value: `${priorityIcon} ${priorityLabel}`, valueClass: `priority-${task.priority}` }]
 			});
 		}
 

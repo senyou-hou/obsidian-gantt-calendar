@@ -1385,6 +1385,7 @@
 		}
 	},
 	"taskCard": {
+		"priority": "Priority",
 		"due": "Due",
 		"created": "Created",
 		"start": "Start",
