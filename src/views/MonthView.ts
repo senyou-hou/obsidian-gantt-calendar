@@ -64,14 +64,25 @@ export class MonthViewRenderer extends BaseViewRenderer {
 			void (async () => {
 				try {
 					this.clearTaskTooltips();
+
+					// 月视图拖拽只改日期：保留任务原有时间，避免被重置为 00:00
+					const newDate = new Date(targetDate);
+					const originalValue = getTaskDateField(sourceTask, dateFieldName);
+					if (originalValue) {
+						const originalDate = new Date(originalValue);
+						if (!isNaN(originalDate.getTime())) {
+							newDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), 0);
+						}
+					}
+
 					await updateTaskDateField(
 						this.app,
 						sourceTask,
 						dateFieldName,
-						targetDate,
+						newDate,
 						this.plugin.settings.enabledTaskFormats
 					);
-					Logger.debug('MonthView', 'Task drag-drop update successful', { taskId, dateField: dateFieldName, targetDate });
+					Logger.debug('MonthView', 'Task drag-drop update successful', { taskId, dateField: dateFieldName, newDate });
 				} catch (error) {
 					Logger.error('MonthView', 'Error updating task date:', error);
 					new Notice(i18n.t('views.dayView.updateDateFailed'));
