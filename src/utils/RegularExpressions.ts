@@ -596,6 +596,17 @@ export class RegularExpressions {
         cancelledRegex: /^\[\/\]$/,
     } as const;
 
+    // ==================== 文件扩展名正则 ====================
+
+    /**
+     * Markdown 文件扩展名正则
+     * 匹配行尾的 .md 扩展名，用于从文件路径提取文件名
+     *
+     * @example
+     * "note.md" -> 匹配，替换后 "note"
+     */
+    public static readonly markdownFileExtensionRegex = /\.md$/;
+
     // ==================== 链接解析正则 ====================
 
     /**

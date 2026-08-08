@@ -1,57 +1,31 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { createElement } from 'react';
 import { CalendarViewType, IPluginContext } from './types';
 
-import { getWeekOfDate, formatDate, getTodayDate } from './dateUtils/dateUtilsIndex';
 import { getTodayInTimezone } from './dateUtils/timezone';
-
-import { YearViewRenderer } from './views/YearView';
-import { MonthViewRenderer } from './views/MonthView';
-import { WeekViewRenderer } from './views/WeekView';
-import { DayViewRenderer } from './views/DayView';
-import { i18n } from './i18n/i18n';
-import { TaskViewRenderer } from './views/TaskView';
-import { GanttViewRenderer } from './views/GanttView';
-import { Toolbar } from './toolbar/toolbar';
-import { Logger } from './utils/logger';
+import { useCalendarStore } from './ui/store/calendarStore';
+import { PluginContext } from './ui/pluginContext';
+import { mountReact } from './ui/reactBridge';
+import { App } from './ui/App';
 
 export const GC_VIEW_ID = 'gantt-calendar-view';
 
+/**
+ * 主日历视图（React 渲染）
+ *
+ * React 根组件作为数据入口：视图切换/日期导航/筛选排序全部通过
+ * useCalendarStore 完成，本类仅负责生命周期、插件上下文与数据桥接。
+ */
 export class GCMainView extends ItemView {
-	private currentDate: Date = new Date(); // 将在 onOpen 中通过 getTodayInTimezone() 初始化
-	private viewType: CalendarViewType = 'year';
-	private resizeObserver: ResizeObserver | null = null;
 	private plugin: IPluginContext;
-	private cacheUpdateListener: (() => void) | null = null;
-
-	// 子视图渲染器
-	private yearRenderer: YearViewRenderer;
-	private monthRenderer: MonthViewRenderer;
-	private weekRenderer: WeekViewRenderer;
-	private dayRenderer: DayViewRenderer;
-	private taskRenderer: TaskViewRenderer;
-    private ganttRenderer: GanttViewRenderer;
-
-	// 工具栏控制器
-	private toolbar: Toolbar;
+	private cacheUpdateListener: ((filePath?: string) => void) | null = null;
+	private unmountReact: (() => void) | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: IPluginContext) {
 		super(leaf);
 		this.plugin = plugin;
-		// 使用设置中的默认视图
-		this.viewType = plugin.settings.defaultView || 'year';
 		// 存储 calendarView 引用到 plugin,供子渲染器访问
-		this.plugin.calendarView = this as unknown as IPluginContext['calendarView'];
-
-		// 初始化子视图渲染器
-		this.yearRenderer = new YearViewRenderer(this.app, plugin);
-		this.monthRenderer = new MonthViewRenderer(this.app, plugin);
-		this.weekRenderer = new WeekViewRenderer(this.app, plugin);
-		this.dayRenderer = new DayViewRenderer(this.app, plugin);
-		this.taskRenderer = new TaskViewRenderer(this.app, plugin);
-        this.ganttRenderer = new GanttViewRenderer(this.app, plugin);
-
-		// 初始化工具栏控制器
-		this.toolbar = new Toolbar();
+		this.plugin.calendarView = this;
 	}
 
 	getViewType(): string {
@@ -67,63 +41,47 @@ export class GCMainView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
-		// 使用时区感知的"今天"初始化当前日期
-		this.currentDate = getTodayInTimezone();
-
 		// 等待任务缓存准备完成
 		if (this.plugin?.taskCache?.whenReady) {
 			await this.plugin.taskCache.whenReady();
 		}
-		// 设置日历视图渲染器引用（用于排序和筛选功能）
-		this.toolbar.setCalendarRenderers(
-			this.dayRenderer,
-			this.weekRenderer,
-			this.monthRenderer,
-			this.yearRenderer
-		);
-		this.render();
-		this.setupResizeObserver();
 
-		// 订阅缓存更新事件
+		// 初始化 store：使用设置中的默认视图 + 时区感知的"今天"
+		useCalendarStore.setState({
+			viewType: this.plugin.settings.defaultView || 'year',
+			currentDate: getTodayInTimezone(),
+			tasks: this.plugin.taskCache?.getAllTasks() || [],
+		});
+
+		// 挂载 React 应用
+		if (!this.unmountReact) {
+			this.unmountReact = mountReact(
+				this.contentEl,
+				createElement(
+					PluginContext.Provider,
+					{ value: this.plugin },
+					createElement(App)
+				)
+			);
+		}
+
+		// 订阅缓存更新事件 → 通知 store（视图自动重渲染）
 		this.cacheUpdateListener = (filePath?: string) => {
 			if (this.containerEl.isConnected) {
-				this.incrementalRefresh(filePath);
+				useCalendarStore.getState().notifyTasksUpdated(
+					this.plugin.taskCache.getAllTasks(),
+					filePath
+				);
 			}
 		};
 		this.plugin?.taskCache?.onUpdate(this.cacheUpdateListener);
 	}
 
 	/**
-	 * 增量刷新：根据当前视图类型调用对应的增量刷新方法
-	 * @param filePath - 变更的文件路径（可选），甘特图可用于增量更新
+	 * 设置变更后触发 React 整体重挂载（重新读取设置）
 	 */
-	private incrementalRefresh(filePath?: string): void {
-		switch (this.viewType) {
-			case 'month':
-				this.monthRenderer.refreshTasks();
-				break;
-			case 'week':
-				this.weekRenderer.refreshTasks(filePath);
-				break;
-			case 'day':
-				this.dayRenderer.refreshTasks();
-				break;
-			case 'task':
-				this.taskRenderer.refreshTasks();
-				break;
-			case 'year':
-				this.yearRenderer.refreshTasks();
-				break;
-			case 'gantt':
-				// 调用甘特图的增量更新
-				this.ganttRenderer.refreshTasks();
-				break;
-		}
-	}
-
 	public refreshSettings(): void {
-		// 重新渲染内容
-		this.render();
+		useCalendarStore.getState().bumpSettings();
 	}
 
 	async onClose(): Promise<void> {
@@ -133,282 +91,34 @@ export class GCMainView extends ItemView {
 			this.cacheUpdateListener = null;
 		}
 
-		// Cleanup renderers
-		this.yearRenderer.runDomCleanups();
-		this.monthRenderer.runDomCleanups();
-		this.weekRenderer.runDomCleanups();
-		this.dayRenderer.runDomCleanups();
-		this.taskRenderer.runDomCleanups();
-		this.ganttRenderer.runDomCleanups();
-
-		// Cleanup toolbar
-		this.toolbar.destroy();
-
-		// Cleanup resize observer
-		if (this.resizeObserver) {
-			this.resizeObserver.disconnect();
+		// Unmount React
+		if (this.unmountReact) {
+			this.unmountReact();
+			this.unmountReact = null;
 		}
 	}
 
-	private setupResizeObserver(): void {
-		// 监听容器大小变化，重新计算年视图农历显示
-		const content = this.contentEl;
-		if (!content) return;
+	// ===== 公共方法供外部调用（命令/侧栏等） =====
 
-		try {
-			this.resizeObserver = new ResizeObserver(() => {
-				if (this.viewType === 'year') {
-					this.yearRenderer.updateAllMonthCards();
-				}
-			});
-
-			this.resizeObserver.observe(content);
-		} catch {
-			// ResizeObserver not supported, fail silently
-		}
-	}
-
-	private render(): void {
-		const startTime = performance.now();
-		Logger.debug('GCMainView', `render() called, viewType: ${this.viewType}`);
-
-		// 全量重建前保存周视图滚动位置，重建后恢复，防止滚动条跳动
-		const weekScrollState = this.viewType === 'week' ? this.captureWeekScroll() : null;
-
-		// 清理上一次渲染的资源
-		this.yearRenderer.runDomCleanups();
-		this.monthRenderer.runDomCleanups();
-		this.weekRenderer.runDomCleanups();
-		this.dayRenderer.runDomCleanups();
-		this.taskRenderer.runDomCleanups();
-
-		const container = this.contentEl;
-		container.empty();
-		container.removeClass('gantt-root');
-
-		// Create toolbar
-		const toolbarContainer = container.createDiv('calendar-toolbar');
-		this.toolbar.render(toolbarContainer, {
-			currentViewType: this.viewType,
-			currentDate: this.currentDate,
-			titleText: this.getViewTitle(),
-			showViewNavButtonText: this.plugin?.settings?.showViewNavButtonText ?? true,
-			globalFilterText: this.plugin?.settings?.globalTaskFilter,
-			taskRenderer: this.taskRenderer,
-			ganttRenderer: this.ganttRenderer,
-			dayRenderer: this.dayRenderer,
-			weekRenderer: this.weekRenderer,
-			plugin: this.plugin,
-			onViewSwitch: (type) => this.switchView(type),
-			onPrevious: () => this.previousPeriod(),
-			onToday: () => this.goToToday(),
-			onNext: () => this.nextPeriod(),
-			onFilterChange: () => {
-				// 任务视图：只刷新任务列表，不重新渲染工具栏
-				if (this.viewType === 'task') {
-					this.taskRenderer.refreshTaskList();
-				} else {
-					this.render();
-				}
-			},
-			onRender: () => this.render(),  // 仅重新渲染视图，不刷新缓存
-			onRefresh: async () => {
-				await this.plugin.taskCache.initialize(
-					this.plugin.settings.globalTaskFilter,
-					this.plugin.settings.enabledTaskFormats
-				);
-				this.render();
-			}
+	public selectDate(date: Date, viewType?: CalendarViewType): void {
+		useCalendarStore.setState({
+			currentDate: new Date(date),
+			viewType: viewType ?? 'day',
 		});
-
-		// Create calendar content
-		const content = container.createDiv('calendar-content');
-		// 甘特图模式下限定滚动区域在内容容器内，并让根容器禁用外部滚动
-		if (this.viewType === 'gantt') {
-			content.addClass('gantt-mode');
-			container.addClass('gantt-root');
-		} else {
-			content.removeClass('gantt-mode');
-		}
-		this.renderCalendarContent(content);
-
-		// 年视图应用农历字号
-		if (this.viewType === 'year') {
-			this.yearRenderer.applyLunarFontSize(content);
-		}
-		// 月视图应用农历字号
-		if (this.viewType === 'month') {
-			this.monthRenderer.applyLunarFontSize(content);
-		}
-
-		const elapsed = performance.now() - startTime;
-		Logger.debug('GCMainView', `render() completed in ${elapsed.toFixed(2)}ms`);
-
-		if (weekScrollState) {
-			this.restoreWeekScroll(weekScrollState);
-		}
-	}
-
-	// ===== 周视图滚动位置保护 =====
-
-	/**
-	 * 捕获周视图当前滚动位置（时间轴内部滚动 + 外层瀑布流滚动）
-	 */
-	private captureWeekScroll(): { tasksGridTop: number; viewContentTop: number } {
-		const tasksGrid = this.contentEl.querySelector('.gc-view.gc-view--week .gc-week-view__tasks-grid') as HTMLElement;
-		return {
-			tasksGridTop: tasksGrid ? tasksGrid.scrollTop : 0,
-			viewContentTop: this.contentEl.scrollTop,
-		};
-	}
-
-	/**
-	 * 恢复周视图滚动位置（同步 + rAF 双保险，rAF 兜底异步内容导致的二次钳制）
-	 */
-	private restoreWeekScroll(state: { tasksGridTop: number; viewContentTop: number }): void {
-		const apply = () => {
-			if (!this.contentEl.isConnected) return;
-			if (state.viewContentTop > 0) {
-				this.contentEl.scrollTop = state.viewContentTop;
-			}
-			if (state.tasksGridTop > 0) {
-				const tasksGrid = this.contentEl.querySelector('.gc-view.gc-view--week .gc-week-view__tasks-grid') as HTMLElement;
-				if (tasksGrid) {
-					tasksGrid.scrollTop = state.tasksGridTop;
-				}
-			}
-		};
-		apply();
-		window.requestAnimationFrame(apply);
-	}
-
-	private renderCalendarContent(content: HTMLElement): void {
-		// 瀑布流视图：日/周/任务/年视图取消内部滚动，由 .view-content 统一滚动
-		const waterfallViews: CalendarViewType[] = ['day', 'week', 'task', 'year'];
-		const isWaterfall = waterfallViews.includes(this.viewType);
-		content.style.overflow = isWaterfall ? 'visible' : '';
-		const viewContent = content.parentElement;
-		if (viewContent) {
-			viewContent.style.overflow = isWaterfall ? 'auto' : '';
-		}
-
-		switch (this.viewType) {
-			case 'year':
-				this.yearRenderer.render(content, this.currentDate);
-				break;
-			case 'month':
-				this.monthRenderer.render(content, this.currentDate);
-				break;
-			case 'week':
-				this.weekRenderer.render(content, this.currentDate);
-				break;
-			case 'day':
-				this.dayRenderer.render(content, this.currentDate);
-				break;
-			case 'task':
-				this.taskRenderer.render(content, this.currentDate);
-				break;
-            case 'gantt':
-                this.ganttRenderer.render(content, this.currentDate);
-                break;
-		}
-	}
-
-	// ===== 公共方法供子渲染器调用 =====
-
- public selectDate(date: Date): void {
-		this.currentDate = new Date(date);
-		if (this.viewType !== 'day') {
-			this.viewType = 'day';
-		}
-		this.render();
 	}
 
 	public getCurrentDate(): Date {
-		return this.currentDate;
+		return useCalendarStore.getState().currentDate;
 	}
 
 	public switchView(type: CalendarViewType): void {
-		this.viewType = type;
-		this.render();
+		useCalendarStore.getState().setViewType(type);
 	}
 
-	// ===== 导航方法 =====
-
-	private previousPeriod(): void {
-		const date = new Date(this.currentDate);
-		switch (this.viewType) {
-			case 'year':
-				date.setFullYear(date.getFullYear() - 1);
-				break;
-			case 'month':
-				date.setMonth(date.getMonth() - 1);
-				break;
-			case 'week':
-				date.setDate(date.getDate() - 7);
-				break;
-			case 'day':
-				date.setDate(date.getDate() - 1);
-				break;
-			case 'task':
-				return;
-            case 'gantt':
-                return;
-		}
-		this.currentDate = date;
-		this.render();
-	}
-
-	private nextPeriod(): void {
-		const date = new Date(this.currentDate);
-		switch (this.viewType) {
-			case 'year':
-				date.setFullYear(date.getFullYear() + 1);
-				break;
-			case 'month':
-				date.setMonth(date.getMonth() + 1);
-				break;
-			case 'week':
-				date.setDate(date.getDate() + 7);
-				break;
-			case 'day':
-				date.setDate(date.getDate() + 1);
-				break;
-			case 'task':
-				return;
-            case 'gantt':
-                return;
-		}
-		this.currentDate = date;
-		this.render();
-	}
-
-	private goToToday(): void {
-		if (this.viewType === 'task' || this.viewType === 'gantt') return;
-		this.currentDate = getTodayDate();
-		this.render();
-	}
-
-	private getViewTitle(): string {
-		const monthAbbreviations = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-		switch (this.viewType) {
-			case 'year':
-				return this.currentDate.getFullYear().toString();
-			case 'month':
-				return monthAbbreviations[this.currentDate.getMonth()];
-			case 'week': {
-				const week = getWeekOfDate(this.currentDate, undefined, !!(this.plugin?.settings?.startOnMonday));
-				const start = formatDate(week.startDate, 'MM/dd');
-				const end = formatDate(week.endDate, 'MM/dd');
-				return `W${week.weekNumber}(${start}-${end})`;
-			}
-			case 'day':
-				return formatDate(this.currentDate, 'MM/dd');
-			case 'task':
-				return i18n.t('views.taskView.title');
-            case 'gantt':
-                return i18n.t('views.ganttView.title');
-		}
+	/**
+	 * 保留旧 API：触发一次全量重渲染（等价 refreshSettings）
+	 */
+	public render(): void {
+		this.refreshSettings();
 	}
 }

@@ -29,6 +29,8 @@ export const BLOCKS = {
 	MONTH_VIEW: 'month-view',
 	/** 年视图 */
 	YEAR_VIEW: 'year-view',
+	/** 任务视图 */
+	TASK_VIEW: 'task-view',
 	/** 甘特图 */
 	GANTT: 'gantt-view',
 
@@ -368,6 +370,12 @@ export const GanttClasses = {
 		stickyHeader: bem(BLOCKS.GANTT, 'sticky-header'),
 		handleLeft: bem(BLOCKS.GANTT, 'handle-left'),
 		handleRight: bem(BLOCKS.GANTT, 'handle-right'),
+		emptyState: 'gantt-empty-state',
+		emptyIcon: 'gantt-empty-icon',
+		emptyTitle: 'gantt-empty-title',
+		emptyReason: 'gantt-empty-reason',
+		emptyHint: 'gantt-empty-hint',
+		error: 'gantt-error',
 	},
 
 	/** Modifiers */
@@ -765,6 +773,17 @@ export const WeekViewClasses = {
 		timeline: bem(BLOCKS.WEEK_VIEW, undefined, 'timeline'),
 		dragOver: bem(BLOCKS.WEEK_VIEW, 'row', 'drag-over'),
 			alldayDragOver: bem(BLOCKS.WEEK_VIEW, 'allday-slot', 'drag-over'),
+	},
+};
+
+/**
+ * 任务视图类名常量
+ */
+export const TaskViewClasses = {
+	block: bem(BLOCKS.TASK_VIEW),
+
+	elements: {
+		empty: 'gantt-task-empty',
 	},
 };
 

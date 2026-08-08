@@ -129,7 +129,8 @@ describe('TaskRepository', () => {
 			await mockSource.createTask(mockTask);
 
 			// 等待事件处理
-			await new Promise(resolve => window.setTimeout(resolve, 10));
+			// eslint-disable-next-line obsidianmd/prefer-window-timers -- node 测试环境无 window
+			await new Promise(resolve => setTimeout(resolve, 10));
 
 			const tasks = repository.getAllTasks();
 			expect(tasks).toHaveLength(1);
