@@ -1,6 +1,7 @@
 import { createElement, type JSX, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ModalProvider, useModal, type ModalProviderContextValue } from '../components/ModalProvider';
+import { TooltipProvider } from '../components/TooltipProvider';
 
 /**
  * 插件级全局 Modal 宿主
@@ -32,7 +33,11 @@ export function initModalHost(): void {
 		createElement(
 			ModalProvider,
 			null,
-			createElement(ModalHostBridge)
+			createElement(
+				TooltipProvider,
+				null,
+				createElement(ModalHostBridge)
+			)
 		)
 	);
 }
