@@ -10,7 +10,7 @@ import { SyncStateManager } from '../data-layer/feishu-sync/syncState';
 import { DEFAULT_PUSH_FILTER } from '../utils/taskFilter';
 import { setCssProps } from '../utils/bem';
 
-import { showSyncResultModal } from '../modals/SyncResultModal';
+import { showSyncResultModal } from '../ui/modals/SyncResultDialog';
 import { i18n } from '../i18n/i18n';
 
 /**

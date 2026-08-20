@@ -1,6 +1,8 @@
 import { type JSX } from 'react';
 import { useCalendarStore } from './store/calendarStore';
 import { ToolbarBar } from './components/Toolbar';
+import { TooltipProvider } from './components/TooltipProvider';
+import { ModalProvider } from './components/ModalProvider';
 import { YearView } from './views/YearView';
 import { MonthView } from './views/MonthView';
 import { WeekView } from './views/WeekView';
@@ -38,20 +40,22 @@ export function App(): JSX.Element {
 	const isWaterfall = viewType === 'day' || viewType === 'week' || viewType === 'task' || viewType === 'year';
 
 	return (
-		<div
-			className={`gantt-calendar-app${isGantt ? ' gantt-root' : ''}`}
-			style={{ overflow: isWaterfall ? 'auto' : undefined, height: '100%' }}
-		>
-			<div className="calendar-toolbar">
-				<ToolbarBar />
-			</div>
-			<div
-				key={`${viewType}-${settingsVersion}`}
-				className={`calendar-content${isGantt ? ' gantt-mode' : ''}`}
-				style={{ overflow: isWaterfall ? 'visible' : undefined }}
-			>
-				{renderView(viewType)}
-			</div>
-		</div>
+		<ModalProvider>
+			<TooltipProvider>
+				<div
+					className={`gantt-calendar-app${isGantt ? ' gantt-root' : ''}`}
+					style={{ overflow: isWaterfall ? 'auto' : undefined, height: '100%' }}
+				>
+					<ToolbarBar />
+					<div
+						key={`${viewType}-${settingsVersion}`}
+						className={`calendar-content${isGantt ? ' gantt-mode' : ''}`}
+						style={{ overflow: isWaterfall ? 'visible' : undefined }}
+					>
+						{renderView(viewType)}
+					</div>
+				</div>
+			</TooltipProvider>
+		</ModalProvider>
 	);
 }

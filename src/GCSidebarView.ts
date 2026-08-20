@@ -1,28 +1,30 @@
-import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
-import { SidebarClasses, withModifiers } from './utils/bem';
-import { TaskListTab } from './sidebar/TaskListTab';
-import { DailyTimelineTab } from './sidebar/DailyTimelineTab';
-
-import { i18n } from './i18n/i18n';
+import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { createElement } from 'react';
 import type { IPluginContext } from './types';
+import { getTodayInTimezone } from './dateUtils/timezone';
+import { useCalendarStore } from './ui/store/calendarStore';
+import { PluginContext } from './ui/pluginContext';
+import { mountReact } from './ui/reactBridge';
+import { SidebarApp } from './ui/sidebar/SidebarApp';
+import { TooltipProvider } from './ui/components/TooltipProvider';
+import { ModalProvider } from './ui/components/ModalProvider';
 
 export const GC_SIDEBAR_VIEW_ID = 'gantt-calendar-sidebar-view';
 
-type SidebarTab = 'taskList' | 'dailyTimeline';
-
+/**
+ * 侧边栏视图（React 渲染）
+ *
+ * Tab 切换/筛选/时间线全部由 React 组件（SidebarApp）完成，
+ * 本类仅负责生命周期、插件上下文与数据桥接。
+ */
 export class GCSidebarView extends ItemView {
 	private plugin: IPluginContext;
-	private currentTab: SidebarTab = 'dailyTimeline';
-	private taskListTab: TaskListTab;
-	private dailyTimelineTab: DailyTimelineTab;
-	private contentContainer: HTMLElement | null = null;
-	private cacheUpdateListener: (() => void) | null = null;
+	private cacheUpdateListener: ((filePath?: string) => void) | null = null;
+	private unmountReact: (() => void) | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: IPluginContext) {
 		super(leaf);
 		this.plugin = plugin;
-		this.taskListTab = new TaskListTab(this.app, plugin);
-		this.dailyTimelineTab = new DailyTimelineTab(this.app, plugin);
 	}
 
 	getViewType(): string {
@@ -43,15 +45,45 @@ export class GCSidebarView extends ItemView {
 			await this.plugin.taskCache.whenReady();
 		}
 
-		this.render();
+		// 初始化 store：时区感知的"今天" + 当前任务
+		useCalendarStore.setState({
+			currentDate: getTodayInTimezone(),
+			tasks: this.plugin.taskCache?.getAllTasks() || [],
+		});
 
-		// 订阅缓存更新事件
-		this.cacheUpdateListener = () => {
+		// 挂载 React 应用（需 TooltipProvider/ModalProvider 包裹，TaskCard 依赖其 context）
+		if (!this.unmountReact) {
+			this.unmountReact = mountReact(
+				this.contentEl,
+				createElement(
+					PluginContext.Provider,
+					{ value: this.plugin },
+					createElement(
+						ModalProvider,
+						null,
+						createElement(TooltipProvider, null, createElement(SidebarApp))
+					)
+				)
+			);
+		}
+
+		// 订阅缓存更新事件 → 通知 store（视图自动重渲染）
+		this.cacheUpdateListener = (filePath?: string) => {
 			if (this.containerEl.isConnected) {
-				this.refreshCurrentTab();
+				useCalendarStore.getState().notifyTasksUpdated(
+					this.plugin.taskCache.getAllTasks(),
+					filePath
+				);
 			}
 		};
 		this.plugin?.taskCache?.onUpdate(this.cacheUpdateListener);
+	}
+
+	/**
+	 * 设置变更后触发 React 整体重挂载（重新读取设置）
+	 */
+	public refreshSettings(): void {
+		useCalendarStore.getState().bumpSettings();
 	}
 
 	async onClose(): Promise<void> {
@@ -59,89 +91,10 @@ export class GCSidebarView extends ItemView {
 			this.plugin?.taskCache?.offUpdate(this.cacheUpdateListener);
 			this.cacheUpdateListener = null;
 		}
-		this.taskListTab.cleanup();
-		this.dailyTimelineTab.cleanup();
-	}
 
-	private render(): void {
-		const container = this.contentEl;
-		container.empty();
-		container.addClass(SidebarClasses.block);
-
-		// Tab 切换栏
-		const tabBar = container.createDiv(SidebarClasses.elements.tabBar);
-		this.renderTabBar(tabBar);
-
-		// 内容区域
-		this.contentContainer = container.createDiv(SidebarClasses.elements.content);
-		this.renderCurrentTab();
-	}
-
-	private renderTabBar(tabBar: HTMLElement): void {
-		const taskListBtn = tabBar.createDiv(
-			withModifiers(
-				SidebarClasses.elements.tabBtn,
-				this.currentTab === 'taskList' ? SidebarClasses.elements.tabBtnActive : undefined
-			)
-		);
-		const taskListIcon = taskListBtn.createSpan();
-		setIcon(taskListIcon, 'list');
-		taskListBtn.createSpan({ text: ' ' + i18n.t('sidebar.tabTitles.taskList') });
-		taskListBtn.addEventListener('click', () => {
-			this.switchTab('taskList');
-		});
-
-		const timelineBtn = tabBar.createDiv(
-			withModifiers(
-				SidebarClasses.elements.tabBtn,
-				this.currentTab === 'dailyTimeline' ? SidebarClasses.elements.tabBtnActive : undefined
-			)
-		);
-		const timelineIcon = timelineBtn.createSpan();
-		setIcon(timelineIcon, 'clock');
-		timelineBtn.createSpan({ text: ' ' + i18n.t('sidebar.tabTitles.dailyTimeline') });
-		timelineBtn.addEventListener('click', () => {
-			this.switchTab('dailyTimeline');
-		});
-	}
-
-	private switchTab(tab: SidebarTab): void {
-		if (this.currentTab === tab) return;
-		this.currentTab = tab;
-		this.render();
-	}
-
-	/**
-	 * 刷新侧边栏（供 ViewManager 调用）
-	 */
-	public refreshSettings(): void {
-		this.render();
-	}
-
-	private renderCurrentTab(): void {
-		if (!this.contentContainer) return;
-		this.contentContainer.empty();
-
-		switch (this.currentTab) {
-			case 'taskList':
-				this.taskListTab.render(this.contentContainer);
-				break;
-			case 'dailyTimeline':
-				this.dailyTimelineTab.render(this.contentContainer);
-				break;
-		}
-	}
-
-	private refreshCurrentTab(): void {
-		if (!this.contentContainer) return;
-
-		switch (this.currentTab) {
-			case 'taskList':
-				this.taskListTab.refresh(this.contentContainer);
-				break;
-			case 'dailyTimeline':
-				this.dailyTimelineTab.refresh(this.contentContainer);
-				break;
+		if (this.unmountReact) {
+			this.unmountReact();
+			this.unmountReact = null;
 		}
 	}
 }

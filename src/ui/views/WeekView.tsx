@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import type { DragEvent as ReactDragEvent } from 'react';
-import { Notice, setIcon } from 'obsidian';
+import { Notice } from 'obsidian';
 import { getWeekOfDate } from '../../dateUtils/dateUtilsIndex';
 import type { GCTask } from '../../types';
 import type { DateFieldType } from '../../settings/types';
@@ -11,13 +11,14 @@ import { usePlugin, useApp } from '../pluginContext';
 import { useCalendarStore, selectViewFilter } from '../store/calendarStore';
 import { applyStatusFilter, applyTagFilter, applySort } from '../utils/taskFilters';
 import { TaskCard } from '../components/TaskCard';
+import { Icon } from '../components/Icon';
 import { updateTaskDateField } from '../../tasks/taskUpdater';
 import { sortTasks } from '../../tasks/taskSorter';
 import { toISOStringLocal } from '../../dateUtils/timezone';
 import { generateVirtualInstances } from '../../tasks/virtualTaskGenerator';
-import { CreateTaskModal } from '../../modals/CreateTaskModal';
+import { openCreateTaskModal } from '../modals/TaskFormModal';
 import { renderCurrentTimeLine } from '../../utils/currentTimeLine';
-import { TooltipManager } from '../../utils/tooltipManager';
+import { useTaskTooltip } from '../components/TooltipProvider';
 import { i18n } from '../../i18n/i18n';
 import { Logger } from '../../utils/logger';
 
@@ -64,6 +65,7 @@ function sameDay(task: GCTask, dateField: DateFieldType, normalizedTarget: Date)
 export function WeekView(): JSX.Element {
 	const plugin = usePlugin();
 	const app = useApp();
+	const tooltip = useTaskTooltip();
 	const currentDate = useCalendarStore((s) => s.currentDate);
 	const tasks = useCalendarStore((s) => s.tasks);
 	const filter = useCalendarStore((s) => selectViewFilter(s, 'week'));
@@ -220,7 +222,7 @@ export function WeekView(): JSX.Element {
 
 		void (async () => {
 			try {
-				TooltipManager.getInstance(plugin).cancel();
+				tooltip.cancel();
 				const newDate = new Date(targetDate);
 				newDate.setHours(hour, 0, 0, 0);
 				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateField]: 'time' };
@@ -259,7 +261,7 @@ export function WeekView(): JSX.Element {
 
 		void (async () => {
 			try {
-				TooltipManager.getInstance(plugin).cancel();
+				tooltip.cancel();
 				const newDate = new Date(targetDate);
 				newDate.setHours(0, 0, 0, 0);
 				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateField]: 'day' };
@@ -298,7 +300,7 @@ export function WeekView(): JSX.Element {
 
 		void (async () => {
 			try {
-				TooltipManager.getInstance(plugin).hide();
+				tooltip.hide();
 				const newDate = new Date(targetDate);
 				const original = getTaskDateField(sourceTask, dateField );
 				if (original) {
@@ -363,7 +365,7 @@ export function WeekView(): JSX.Element {
 											task={t}
 											config={config}
 											targetDate={day.date}
-											onClick={() => TooltipManager.getInstance(plugin).hide()}
+											onClick={() => tooltip.hide()}
 											onRefresh={() => refreshTasks()}
 										/>
 									))}
@@ -402,7 +404,7 @@ export function WeekView(): JSX.Element {
 													task={t}
 													config={config}
 													targetDate={day.date}
-													onClick={() => TooltipManager.getInstance(plugin).hide()}
+													onClick={() => tooltip.hide()}
 													onRefresh={() => refreshTasks()}
 												/>
 											))}
@@ -460,7 +462,7 @@ export function WeekView(): JSX.Element {
 													task={t}
 													config={config}
 													targetDate={day.date}
-													onClick={() => TooltipManager.getInstance(plugin).hide()}
+													onClick={() => tooltip.hide()}
 													onRefresh={() => refreshTasks()}
 												/>
 											))
@@ -498,20 +500,18 @@ function SlotCreateButton({
 	return (
 		<div
 			className={WeekViewClasses.elements.slotCreate}
-			ref={(el) => {
-				if (el && el.children.length === 0) setIcon(el, 'plus');
-			}}
 			onClick={(e) => {
 				e.stopPropagation();
-				const modal = new CreateTaskModal({
+				openCreateTaskModal({
 					app,
 					plugin,
 					targetDate,
 					targetHour: hour,
 					onSuccess,
 				});
-				modal.open();
 			}}
-		/>
+		>
+			<Icon icon="plus" />
+		</div>
 	);
 }

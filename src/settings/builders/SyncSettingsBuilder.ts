@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises -- 动态 settings API 回调中使用 async 函数 */
 import { Setting, SettingGroup, Notice, requestUrl, TextComponent } from 'obsidian';
-import { showConfirmDialog } from '../../modals/ConfirmModal';
+import { showConfirmDialog } from '../../ui/modals/ConfirmDialog';
 import { BaseBuilder } from './BaseBuilder';
 import type { BuilderConfig, SyncConfiguration } from '../types';
 
@@ -15,7 +15,7 @@ import { SyncStateManager } from '../../data-layer/feishu-sync/syncState';
 import { Logger } from '../../utils/logger';
 import { FileSuggest } from '../components';
 import { PushFilterConfig, DEFAULT_PUSH_FILTER } from '../../utils/taskFilter';
-import { showSyncResultModal } from '../../modals/SyncResultModal';
+import { showSyncResultModal } from '../../ui/modals/SyncResultDialog';
 import { syncFeishuTasks } from '../../commands/feishuCommands';
 import { BLOCKS, bem } from '../../utils/bem';
 import { i18n } from '../../i18n/i18n';

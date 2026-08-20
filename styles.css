@@ -268,7 +268,6 @@ Author: sugar
 
 /* 6.1 Toolbar Component */
 /* BEM命名: gc-toolbar */
-.calendar-toolbar,
 .gc-toolbar {
 	display: flex;
 	flex-direction: row;
@@ -279,6 +278,8 @@ Author: sugar
 	margin: 8px 12px 16px;
 	position: sticky;
 	top: 8px;
+	flex: 1 1 auto;
+	min-width: 0;
 	border-radius: 14px;
 	/* 玻璃效果核心 - 提高透明度 */
 	background: color-mix(in srgb, var(--background-primary) 15%, transparent);
@@ -322,14 +323,6 @@ Author: sugar
 	gap: 6px;
 }
 
-.gc-nav {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	flex: 1;
-}
-
-.gc-toggle-group,
 .gc-toolbar__view-toggle-group {
 	display: flex;
 	align-items: center;
@@ -660,7 +653,6 @@ Author: sugar
 /* 小屏幕 (< 700px) - 隐藏工具栏部分次要功能 */
 @media (max-width: 700px) {
 	/* 减小工具栏内边距 */
-	.calendar-toolbar,
 	.gc-toolbar {
 		gap: 8px;
 	}
@@ -3924,17 +3916,6 @@ Author: sugar
 }
 
 
-.gc-tag--popup {
-	display: inline-block;
-	padding: 2px 6px;
-	margin-right: 4px;
-	margin-bottom: 4px;
-	background-color: var(--tag-background);
-	color: var(--tag-color);
-	border-radius: 4px;
-	font-size: 11px;
-}
-
 /* 响应式适配 */
 @media (max-width: 768px) {
 	.gc-gantt-view__root {
@@ -3957,96 +3938,6 @@ Author: sugar
 /* ========================================
    创建任务弹窗样式
    ======================================== */
-
-/* 创建任务弹窗 */
-.gc-create-task-modal {
-	max-width: 600px;
-}
-
-.gc-create-task-modal__form {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-}
-
-.gc-create-task-modal__field {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-
-.gc-create-task-modal__label {
-	font-weight: 500;
-	font-size: var(--font-ui-small);
-	color: var(--text-muted);
-}
-
-.gc-create-task-modal__input,
-.gc-create-task-modal__textarea {
-	width: 100%;
-	padding: 8px 12px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 4px;
-	background: var(--background-primary);
-	color: var(--text-normal);
-	font-family: var(--font-interface);
-	font-size: var(--font-ui-small);
-}
-
-.gc-create-task-modal__input:focus,
-.gc-create-task-modal__textarea:focus {
-	border-color: var(--interactive-accent);
-	outline: none;
-}
-
-.gc-create-task-modal__textarea {
-	min-height: 80px;
-	resize: vertical;
-	line-height: 1.5;
-}
-
-.gc-create-task-modal__tags-container {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.gc-create-task-modal__tag-item {
-	display: inline-block;
-	padding: 4px 10px;
-	margin: 0;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 4px;
-	background: var(--background-secondary);
-	color: var(--text-normal);
-	font-size: var(--font-ui-smaller);
-	cursor: pointer;
-	transition: all 0.2s ease;
-	user-select: none;
-}
-
-.gc-create-task-modal__tag-item:hover {
-	background: var(--background-modifier-hover);
-}
-
-.gc-create-task-modal__tag-item--selected {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-	border-color: var(--interactive-accent);
-}
-
-.gc-create-task-modal__tag-input {
-	flex: 1;
-}
-
-.gc-create-task-modal__buttons {
-	display: flex;
-	justify-content: flex-end;
-	gap: 12px;
-	margin-top: 8px;
-	padding-top: 16px;
-	border-top: 1px solid var(--background-modifier-border);
-}
 
 /* 创建任务按钮 */
 .gc-create-task-btn {
@@ -4443,12 +4334,6 @@ Author: sugar
 	color: var(--interactive-accent);
 }
 
-/* Status bar icon */
-.gc-status-bar-icon {
-	display: inline-flex;
-	vertical-align: middle;
-	margin-right: 4px;
-}
 .flatpickr-calendar{opacity:0;display:none;text-align:center;visibility:hidden;padding:0;animation:none;direction:ltr;border:0;font-size:14px;line-height:24px;border-radius:5px;position:absolute;width:307.875px;box-sizing:border-box;touch-action:manipulation;background:#ffffff;box-shadow:1px 0 0 #e6e6e6,-1px 0 0 #e6e6e6,0 1px 0 #e6e6e6,0 -1px 0 #e6e6e6,0 3px 13px rgba(0,0,0,0.08)}.flatpickr-calendar.open,.flatpickr-calendar.inline{opacity:1;max-height:640px;visibility:visible}.flatpickr-calendar.open{display:inline-block;z-index:99999}.flatpickr-calendar.animate.open{animation:fpFadeInDown 300ms cubic-bezier(.23,1,.32,1)}.flatpickr-calendar.inline{display:block;position:relative;top:2px}.flatpickr-calendar.static{position:absolute;top:calc(100% + 2px)}.flatpickr-calendar.static.open{z-index:999;display:block}.flatpickr-calendar.multiMonth .flatpickr-days .dayContainer:nth-child(n+1) .flatpickr-day.inRange:nth-child(7n+7){box-shadow:none}.flatpickr-calendar.multiMonth .flatpickr-days .dayContainer:nth-child(n+2) .flatpickr-day.inRange:nth-child(7n+1){box-shadow:-2px 0 0 #e6e6e6,5px 0 0 #e6e6e6}.flatpickr-calendar .hasWeeks .dayContainer,.flatpickr-calendar .hasTime .dayContainer{border-bottom:0;border-bottom-right-radius:0;border-bottom-left-radius:0}.flatpickr-calendar .hasWeeks .dayContainer{border-left:0}.flatpickr-calendar.hasTime .flatpickr-time{height:40px;border-top:1px solid #e6e6e6}.flatpickr-calendar.noCalendar.hasTime .flatpickr-time{height:auto}.flatpickr-calendar:before,.flatpickr-calendar:after{position:absolute;display:block;pointer-events:none;border:solid transparent;content:'';height:0;width:0;left:22px}.flatpickr-calendar.rightMost:before,.flatpickr-calendar.arrowRight:before,.flatpickr-calendar.rightMost:after,.flatpickr-calendar.arrowRight:after{left:auto;right:22px}.flatpickr-calendar.arrowCenter:before,.flatpickr-calendar.arrowCenter:after{left:50%;right:50%}.flatpickr-calendar:before{border-width:5px;margin:0 -5px}.flatpickr-calendar:after{border-width:4px;margin:0 -4px}.flatpickr-calendar.arrowTop:before,.flatpickr-calendar.arrowTop:after{bottom:100%}.flatpickr-calendar.arrowTop:before{border-bottom-color:#e6e6e6}.flatpickr-calendar.arrowTop:after{border-bottom-color:#ffffff}.flatpickr-calendar.arrowBottom:before,.flatpickr-calendar.arrowBottom:after{top:100%}.flatpickr-calendar.arrowBottom:before{border-top-color:#e6e6e6}.flatpickr-calendar.arrowBottom:after{border-top-color:#ffffff}.flatpickr-calendar:focus{outline:0}.flatpickr-wrapper{position:relative;display:inline-block}.flatpickr-months{display:flex}.flatpickr-months .flatpickr-month{background:transparent;color:rgba(0,0,0,0.9);fill:rgba(0,0,0,0.9);height:34px;line-height:1;text-align:center;position:relative;-webkit-user-select:none;user-select:none;overflow:hidden;flex:1}.flatpickr-months .flatpickr-prev-month,.flatpickr-months .flatpickr-next-month{-webkit-user-select:none;user-select:none;text-decoration:none;cursor:pointer;position:absolute;top:0;height:34px;padding:10px;z-index:3;color:rgba(0,0,0,0.9);fill:rgba(0,0,0,0.9)}.flatpickr-months .flatpickr-prev-month.flatpickr-disabled,.flatpickr-months .flatpickr-next-month.flatpickr-disabled{display:none}.flatpickr-months .flatpickr-prev-month i,.flatpickr-months .flatpickr-next-month i{position:relative}.flatpickr-months .flatpickr-prev-month.flatpickr-prev-month,.flatpickr-months .flatpickr-next-month.flatpickr-prev-month{/*
       /*rtl:begin:ignore*/left:0/*
       /*rtl:end:ignore*/}/*
@@ -4580,4 +4465,243 @@ Author: sugar
     right: 2px;
     top: 50%;
     transform: translateY(-50%);
+}
+
+/* ============================================
+   React UI 基础组件样式
+   ============================================ */
+
+/* --- 下拉菜单 (gc-dropdown-menu) --- */
+.gc-dropdown-menu {
+    z-index: var(--layer-popover);
+    min-width: 180px;
+    max-width: 320px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.gc-dropdown-menu__header {
+    padding: 6px 10px;
+    font-size: var(--font-ui-smaller);
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 4px;
+}
+
+.gc-dropdown-menu__section + .gc-dropdown-menu__section {
+    border-top: 1px solid var(--background-modifier-border);
+    margin-top: 4px;
+    padding-top: 4px;
+}
+
+.gc-dropdown-menu__empty {
+    padding: 8px 10px;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.gc-dropdown-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    cursor: pointer;
+    text-align: left;
+}
+
+.gc-dropdown-menu__item:hover {
+    background: var(--background-modifier-hover);
+}
+
+.gc-dropdown-menu__item--checked {
+    color: var(--text-accent);
+    font-weight: 500;
+}
+
+.gc-dropdown-menu__item--disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.gc-dropdown-menu__item-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-muted);
+}
+
+.gc-dropdown-menu__item-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gc-dropdown-menu__item-check {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-accent);
+}
+
+/* --- React 模态框 (gc-modal) --- */
+.gc-modal__host {
+    position: relative;
+    z-index: 0;
+}
+
+.gc-modal__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--layer-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--background-modifier-cover) 55%, transparent);
+    backdrop-filter: blur(4px);
+    animation: gc-modal-fade-in 0.15s ease;
+}
+
+.gc-modal__panel {
+    width: 480px;
+    max-width: 90vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+    animation: gc-modal-pop-in 0.18s ease;
+}
+
+.gc-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.gc-modal__title {
+    margin: 0;
+    font-size: var(--font-ui-medium);
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.gc-modal__close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.gc-modal__close-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.gc-modal__content {
+    padding: 14px 18px 18px;
+    overflow-y: auto;
+}
+
+@keyframes gc-modal-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes gc-modal-pop-in {
+    from { opacity: 0; transform: scale(0.96) translateY(6px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* --- React 右键菜单 (gc-context-menu) --- */
+.gc-context-menu {
+    z-index: var(--layer-popover);
+    min-width: 200px;
+    max-width: 320px;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.gc-context-menu__section + .gc-context-menu__section {
+    border-top: 1px solid var(--background-modifier-border);
+    margin-top: 4px;
+    padding-top: 4px;
+}
+
+.gc-context-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    cursor: pointer;
+    text-align: left;
+}
+
+.gc-context-menu__item:hover {
+    background: var(--background-modifier-hover);
+}
+
+.gc-context-menu__item--disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.gc-context-menu__item-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-muted);
+}
+
+.gc-context-menu__item-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* --- 工具提示内联包裹 (TooltipTrigger) --- */
+.gc-u-inline {
+    display: inline;
+}
+
+/* --- Icon 组件基础样式（无 className 时保持行内对齐） --- */
+.gc-toolbar__nav-buttons .gc-toolbar__btn > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }

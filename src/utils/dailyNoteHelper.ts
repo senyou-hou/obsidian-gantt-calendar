@@ -11,7 +11,7 @@ import { formatDate } from '../dateUtils/dateUtilsIndex';
 import { Logger } from './logger';
 import type { DailyNoteIndex } from './dailyNoteSettingsBridge';
 import { getDailyNote as getDailyNoteFromIndex, createDailyNote } from 'obsidian-daily-notes-interface';
-import { showConfirmDialog } from '../modals/ConfirmModal';
+import { showConfirmDialog } from '../ui/modals/ConfirmDialog';
 
 /**
  * 搜索结果接口

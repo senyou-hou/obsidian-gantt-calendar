@@ -1,16 +1,18 @@
 import { useMemo, type JSX, type MouseEvent as ReactMouseEvent } from 'react';
-import { Menu, setIcon } from 'obsidian';
-import type { CalendarViewType } from '../../types';
+import type { CalendarViewType, SortField } from '../../types';
 import { ToolbarClasses, CreateTaskButtonClasses } from '../../utils/bem';
 import { usePlugin } from '../pluginContext';
 import { useCalendarStore, type ViewScope } from '../store/calendarStore';
 import { i18n } from '../../i18n/i18n';
 import { formatDate, getWeekOfDate } from '../../dateUtils/dateUtilsIndex';
-import { CreateTaskModal } from '../../modals/CreateTaskModal';
+import { openCreateTaskModal } from '../modals/TaskFormModal';
 import { syncFeishuTasks } from '../../commands/feishuCommands';
 import type GanttCalendarPlugin from '../../../main';
 import type { TaskStatus } from '../../tasks/taskStatus';
 import { DEFAULT_TASK_STATUSES } from '../../tasks/taskStatus';
+import { Icon } from './Icon';
+import { DropdownMenu, type MenuItemDef, type DropdownMenuSection } from './DropdownMenu';
+import type { DateFieldType, GanttCalendarSettings } from '../../settings/types';
 
 const VIEW_BUTTONS: Array<{ type: CalendarViewType; icon: string }> = [
 	{ type: 'day', icon: 'sun' },
@@ -22,10 +24,6 @@ const VIEW_BUTTONS: Array<{ type: CalendarViewType; icon: string }> = [
 ];
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function getMenuEvent(e: ReactMouseEvent): MouseEvent {
-	return e.nativeEvent;
-}
 
 /**
  * React 工具栏
@@ -93,13 +91,12 @@ export function ToolbarBar(): JSX.Element {
 
 	// ===== 创建任务 / 设置 / 同步 =====
 	const openCreateTask = () => {
-		const modal = new CreateTaskModal({
+		openCreateTaskModal({
 			app: plugin.app,
 			plugin,
 			targetDate: currentDate,
 			onSuccess: () => {},
 		});
-		modal.open();
 	};
 
 	const openSettings = () => {
@@ -108,54 +105,51 @@ export function ToolbarBar(): JSX.Element {
 		a.setting?.openTabById('gantt-calendar');
 	};
 
-	// ===== 下拉菜单 =====
-	const showStatusMenu = (e: ReactMouseEvent, anchor: HTMLElement) => {
-		const menu = new Menu();
+	// ===== 下拉菜单（声明式） =====
+	const statusMenuSections = (): DropdownMenuSection[] => {
 		const statuses: TaskStatus[] = plugin.settings.taskStatuses || DEFAULT_TASK_STATUSES;
 		const selected = filter?.status.selectedStatuses || [];
-		if (!statuses.length) {
-			menu.addItem((item) => item.setTitle(i18n.t('toolbar.statusFilter.empty')).setDisabled(true));
+		const items: MenuItemDef[] = statuses.map((st) => ({
+			key: st.key,
+			title: st.name,
+			checked: selected.includes(st.key),
+			keepOpen: true,
+			onClick: () => {
+				const next = selected.includes(st.key)
+					? selected.filter((k) => k !== st.key)
+					: [...selected, st.key];
+				setStatusFilter(scope, { selectedStatuses: next });
+			},
+		}));
+		if (items.length === 0) {
+			items.push({ key: '__empty__', title: i18n.t('toolbar.statusFilter.empty'), disabled: true });
 		}
-		for (const st of statuses) {
-			menu.addItem((item) => {
-				item.setTitle(st.name);
-				item.setChecked(selected.includes(st.key));
-				item.onClick(() => {
-					const next = selected.includes(st.key)
-						? selected.filter((k) => k !== st.key)
-						: [...selected, st.key];
-					setStatusFilter(scope, { selectedStatuses: next });
-				});
-			});
-		}
-		menu.showAtMouseEvent(getMenuEvent(e));
+		return [{ items }];
 	};
 
-	const showSortMenu = (e: ReactMouseEvent) => {
-		const menu = new Menu();
-		const fields: Array<{ key: import('../../types').SortField; label: string; i18nKey: string }> = [
-			{ key: 'dueDate', label: i18n.t('toolbar.sort.options.dueDate'), i18nKey: 'dueDate' },
-			{ key: 'priority', label: i18n.t('toolbar.sort.options.priority'), i18nKey: 'priority' },
-			{ key: 'description', label: i18n.t('toolbar.sort.options.description'), i18nKey: 'description' },
-			{ key: 'createdDate', label: i18n.t('toolbar.sort.options.createdDate'), i18nKey: 'createdDate' },
-			{ key: 'startDate', label: i18n.t('toolbar.sort.options.startDate'), i18nKey: 'startDate' },
-			{ key: 'scheduledDate', label: i18n.t('toolbar.sort.options.scheduledDate'), i18nKey: 'scheduledDate' },
-			{ key: 'completionDate', label: i18n.t('toolbar.sort.options.completionDate'), i18nKey: 'completionDate' },
+	const sortMenuSections = (): DropdownMenuSection[] => {
+		const fields: Array<{ key: SortField; label: string }> = [
+			{ key: 'dueDate', label: i18n.t('toolbar.sort.options.dueDate') },
+			{ key: 'priority', label: i18n.t('toolbar.sort.options.priority') },
+			{ key: 'description', label: i18n.t('toolbar.sort.options.description') },
+			{ key: 'createdDate', label: i18n.t('toolbar.sort.options.createdDate') },
+			{ key: 'startDate', label: i18n.t('toolbar.sort.options.startDate') },
+			{ key: 'scheduledDate', label: i18n.t('toolbar.sort.options.scheduledDate') },
+			{ key: 'completionDate', label: i18n.t('toolbar.sort.options.completionDate') },
 		];
-		for (const f of fields) {
-			menu.addItem((item) => {
-				item.setTitle(f.label);
-				item.setChecked(filter?.sort.field === f.key);
-				item.onClick(() => {
-					const order = filter?.sort.order === 'desc' ? 'asc' : 'desc';
-					setSort(scope, { field: f.key, order });
-				});
-			});
-		}
-		menu.showAtMouseEvent(getMenuEvent(e));
+		const items: MenuItemDef[] = fields.map((f) => ({
+			key: f.key,
+			title: f.label,
+			checked: filter?.sort.field === f.key,
+			onClick: () => {
+				const order = filter?.sort.order === 'desc' ? 'asc' : 'desc';
+				setSort(scope, { field: f.key, order });
+			},
+		}));
+		return [{ items }];
 	};
 
-	const showTagMenu = (e: ReactMouseEvent) => {
+	const tagMenuSections = (): DropdownMenuSection[] => {
 		const allTasks = plugin.taskCache.getAllTasks();
 		const tagSet = new Set<string>();
 		for (const t of allTasks) {
@@ -165,37 +159,84 @@ export function ToolbarBar(): JSX.Element {
 		const selected = filter?.tag.selectedTags || [];
 		const operator = filter?.tag.operator || 'OR';
 
-		const menu = new Menu();
-		for (const op of ['AND', 'OR', 'NOT'] as const) {
-			menu.addItem((item) => {
-				item.setTitle(op);
-				item.setChecked(operator === op);
-				item.onClick(() => {
-					setTagFilter(scope, { selectedTags: selected, operator: op });
-				});
-			});
-		}
-		menu.addSeparator();
-		if (!allTags.length) {
-			menu.addItem((item) => item.setTitle(i18n.t('toolbar.tagFilter.empty')).setDisabled(true));
-		}
-		for (const tag of allTags) {
-			menu.addItem((item) => {
-				item.setTitle(`#${tag}`);
-				item.setChecked(selected.includes(tag));
-				item.onClick(() => {
-					const next = selected.includes(tag)
-						? selected.filter((t) => t !== tag)
-						: [...selected, tag];
-					setTagFilter(scope, { selectedTags: next, operator });
-				});
-			});
-		}
-		menu.showAtMouseEvent(getMenuEvent(e));
+		const operatorItems: MenuItemDef[] = (['AND', 'OR', 'NOT'] as const).map((op) => ({
+			key: op,
+			title: op,
+			checked: operator === op,
+			keepOpen: true,
+			onClick: () => {
+				setTagFilter(scope, { selectedTags: selected, operator: op });
+			},
+		}));
+
+		const tagItems: MenuItemDef[] = allTags.length === 0
+			? [{ key: '__empty__', title: i18n.t('toolbar.tagFilter.empty'), disabled: true }]
+			: allTags.map((tag) => ({
+					key: tag,
+					title: `#${tag}`,
+					checked: selected.includes(tag),
+					keepOpen: true,
+					onClick: () => {
+						const next = selected.includes(tag)
+							? selected.filter((t) => t !== tag)
+							: [...selected, tag];
+						setTagFilter(scope, { selectedTags: next, operator });
+					},
+				}));
+
+		return [{ items: operatorItems }, { items: tagItems }];
+	};
+
+	// ===== 任务视图：时间字段选择 =====
+	const fieldMenuSections = (): DropdownMenuSection[] => {
+		const fields: Array<{ key: DateFieldType; label: string }> = [
+			{ key: 'createdDate', label: i18n.t('toolbar.fieldSelector.createdDate') },
+			{ key: 'startDate', label: i18n.t('toolbar.fieldSelector.startDate') },
+			{ key: 'scheduledDate', label: i18n.t('toolbar.fieldSelector.scheduledDate') },
+			{ key: 'dueDate', label: i18n.t('toolbar.fieldSelector.dueDate') },
+			{ key: 'completionDate', label: i18n.t('toolbar.fieldSelector.completionDate') },
+			{ key: 'cancelledDate', label: i18n.t('toolbar.fieldSelector.cancelledDate') },
+		];
+		const current = plugin.settings.taskViewTimeFieldFilter || 'dueDate';
+		return [{
+			items: fields.map((f) => ({
+				key: f.key,
+				title: f.label,
+				checked: current === f.key,
+				onClick: () => void updateTaskViewSettings({ taskViewTimeFieldFilter: f.key }),
+			})),
+		}];
+	};
+
+	// ===== 任务视图：日期范围筛选 =====
+	const dateRangeMenuSections = (): DropdownMenuSection[] => {
+		const modes: Array<{ key: 'all' | 'day' | 'week' | 'month'; label: string }> = [
+			{ key: 'all', label: i18n.t('toolbar.dateFilter.all') },
+			{ key: 'day', label: i18n.t('toolbar.dateFilter.day') },
+			{ key: 'week', label: i18n.t('toolbar.dateFilter.week') },
+			{ key: 'month', label: i18n.t('toolbar.dateFilter.month') },
+		];
+		const current = plugin.settings.taskViewDateRangeMode || 'week';
+		return [{
+			items: modes.map((m) => ({
+				key: m.key,
+				title: m.label,
+				checked: current === m.key,
+				onClick: () => void updateTaskViewSettings({ taskViewDateRangeMode: m.key }),
+			})),
+		}];
+	};
+
+	// ===== 任务视图：写回设置并触发重挂载 =====
+	const updateTaskViewSettings = async (patch: Partial<GanttCalendarSettings>): Promise<void> => {
+		Object.assign(plugin.settings, patch);
+		await plugin.saveSettings();
+		useCalendarStore.getState().bumpSettings();
 	};
 
 	// ===== 渲染 =====
 	const isCalendar = viewType === 'year' || viewType === 'month' || viewType === 'week' || viewType === 'day';
+	const showStatusSort = viewType === 'month' || viewType === 'week' || viewType === 'day';
 
 	return (
 		<div className={ToolbarClasses.block}>
@@ -208,7 +249,7 @@ export function ToolbarBar(): JSX.Element {
 							aria-label={i18n.t(`toolbar.leftButtons.${btn.type}.ariaLabel`)}
 							onClick={() => setViewType(btn.type)}
 						>
-							<span className={ToolbarClasses.components.viewSelectorGroup.icon} ref={(el) => { if (el) setIcon(el, btn.icon); }} />
+							<Icon icon={btn.icon} className={ToolbarClasses.components.viewSelectorGroup.icon} />
 							{showButtonText ? (
 								<span className={ToolbarClasses.components.viewSelectorGroup.label}>
 									{i18n.t(`toolbar.leftButtons.${btn.type}.label`)}
@@ -224,33 +265,78 @@ export function ToolbarBar(): JSX.Element {
 			</div>
 
 			<div className={ToolbarClasses.elements.right}>
+				{viewType === 'task' && (
+					<>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={statusMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="filter" label={i18n.t('toolbar.statusFilter.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
+						</div>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={fieldMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="calendar-clock" label={i18n.t('toolbar.fieldFilter.label')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
+						</div>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={dateRangeMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="calendar-range" label={i18n.t('toolbar.dateFilterLabel')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
+						</div>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={sortMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="arrow-down-up" label={i18n.t('toolbar.sort.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
+						</div>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={tagMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="tag" label={i18n.t('toolbar.tagFilter.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
+						</div>
+					</>
+				)}
 				{isCalendar && (
 					<>
-						{(viewType === 'month' || viewType === 'week' || viewType === 'day') && (
-							<ToolbarBtn
-								icon="filter"
-								label={i18n.t('toolbar.statusFilter.ariaLabel')}
-								onClick={(e, el) => showStatusMenu(e, el)}
-							/>
+						{showStatusSort && (
+							<div className={ToolbarClasses.components.navButtons.group}>
+								<DropdownMenu sections={statusMenuSections()}>
+									{({ onClick, 'aria-expanded': expanded }) => (
+										<ToolbarBtn icon="filter" label={i18n.t('toolbar.statusFilter.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+									)}
+								</DropdownMenu>
+							</div>
 						)}
-						{(viewType === 'month' || viewType === 'week' || viewType === 'day') && (
-							<ToolbarBtn
-								icon="arrow-down-up"
-								label={i18n.t('toolbar.sort.ariaLabel')}
-								onClick={(e) => showSortMenu(e)}
-							/>
+						{showStatusSort && (
+							<div className={ToolbarClasses.components.navButtons.group}>
+								<DropdownMenu sections={sortMenuSections()}>
+									{({ onClick, 'aria-expanded': expanded }) => (
+										<ToolbarBtn icon="arrow-down-up" label={i18n.t('toolbar.sort.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+									)}
+								</DropdownMenu>
+							</div>
 						)}
-						<ToolbarBtn
-							icon="tag"
-							label={i18n.t('toolbar.tagFilter.ariaLabel')}
-							onClick={(e) => showTagMenu(e)}
-						/>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={tagMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="tag" label={i18n.t('toolbar.tagFilter.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
+						</div>
 
 						<div className={ToolbarClasses.components.navButtons.group}>
 							<ToolbarBtn
 								icon="chevron-left"
 								label={i18n.t('toolbar.nav.previous')}
-								onClick={() => navigate(-1)}
+								onClick={(e) => navigate(-1)}
 							/>
 							<ToolbarBtn
 								text={i18n.t('toolbar.nav.today')}
@@ -311,18 +397,20 @@ interface ToolbarBtnProps {
 	icon?: string;
 	text?: string;
 	label: string;
+	ariaExpanded?: boolean;
 	onClick: (e: ReactMouseEvent, anchor: HTMLElement) => void;
 	extra?: string;
 }
 
-function ToolbarBtn({ icon, text, label, onClick, extra }: ToolbarBtnProps): JSX.Element {
+function ToolbarBtn({ icon, text, label, ariaExpanded, onClick, extra }: ToolbarBtnProps): JSX.Element {
 	return (
 		<button
 			className={`${ToolbarClasses.components.navButtons.btn}${extra ? ` ${extra}` : ''}`}
 			aria-label={label}
+			aria-expanded={ariaExpanded}
 			onClick={(e) => onClick(e, e.currentTarget)}
 		>
-			{icon ? <span ref={(el) => { if (el) setIcon(el, icon); }} /> : text}
+			{icon ? <Icon icon={icon} /> : text}
 		</button>
 	);
 }

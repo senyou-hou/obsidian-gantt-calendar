@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react';
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
-import { Notice, setIcon } from 'obsidian';
+import { Notice } from 'obsidian';
 import type { Component } from 'obsidian';
 import type { GCTask } from '../../types';
 import { getTaskDateField } from '../../types';
@@ -11,12 +11,15 @@ import { usePlugin, useApp } from '../pluginContext';
 import { useCalendarStore, selectViewFilter } from '../store/calendarStore';
 import { applyStatusFilter, applyTagFilter, applySort } from '../utils/taskFilters';
 import { TaskCard } from '../components/TaskCard';
+import { Icon } from '../components/Icon';
+import { useDropTarget } from '../utils/useDragAndDrop';
+import { useResizeDivider } from '../utils/useResizeDivider';
 import { updateTaskDateField } from '../../tasks/taskUpdater';
 import { isTodayInTimezone } from '../../dateUtils/timezone';
 import { sortTasks } from '../../tasks/taskSorter';
 import { generateVirtualInstances } from '../../tasks/virtualTaskGenerator';
 import { EmbeddedNoteEditor } from '../../views/EmbeddedNoteEditor';
-import { CreateTaskModal } from '../../modals/CreateTaskModal';
+import { openCreateTaskModal } from '../modals/TaskFormModal';
 import { i18n } from '../../i18n/i18n';
 import { Logger } from '../../utils/logger';
 import { RegularExpressions } from '../../utils/RegularExpressions';
@@ -118,36 +121,7 @@ export function DayView(): JSX.Element {
 	}, [dayTasks.hasTimed, normalized]);
 
 	// ===== 时间格拖放 =====
-	const dragOverSlotRef = useRef<HTMLElement | null>(null);
-
-	const handleSlotDragOver = useCallback((e: ReactDragEvent<HTMLDivElement>) => {
-		e.preventDefault();
-		e.dataTransfer.dropEffect = 'move';
-		const slot = e.currentTarget;
-		if (dragOverSlotRef.current !== slot) {
-			dragOverSlotRef.current?.classList.remove(DayViewClasses.modifiers.timeSlotDragOver);
-			slot.classList.add(DayViewClasses.modifiers.timeSlotDragOver);
-			dragOverSlotRef.current = slot;
-		}
-	}, []);
-
-	const handleSlotDragLeave = useCallback((e: ReactDragEvent<HTMLDivElement>) => {
-		const slot = e.currentTarget;
-		const related = e.relatedTarget as HTMLElement | null;
-		if (related && !slot.contains(related)) {
-			slot.classList.remove(DayViewClasses.modifiers.timeSlotDragOver);
-			dragOverSlotRef.current = null;
-		}
-	}, []);
-
-	const handleSlotDrop = useCallback(async (e: ReactDragEvent<HTMLDivElement>, hour: number) => {
-		e.preventDefault();
-		e.currentTarget.classList.remove(DayViewClasses.modifiers.timeSlotDragOver);
-		dragOverSlotRef.current = null;
-
-		const taskId = e.dataTransfer?.getData('taskId');
-		if (!taskId) return;
-
+	const handleHourDrop = useCallback((taskId: string, hour: number) => {
 		const [filePath, lineNum] = taskId.split(':');
 		const lineNumber = parseInt(lineNum, 10);
 		const sourceTask = tasks.find((t) => t.filePath === filePath && t.lineNumber === lineNumber);
@@ -155,23 +129,40 @@ export function DayView(): JSX.Element {
 			Logger.error('DayView', 'Source task not found:', taskId);
 			return;
 		}
-
-		try {
-			const newDate = new Date(normalized);
-			newDate.setHours(hour, 0, 0, 0);
-			sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateField]: 'time' };
-			await updateTaskDateField(app, sourceTask, dateField, newDate, plugin.settings.enabledTaskFormats);
-			Logger.debug('DayView', 'Task time updated via drag-drop', { taskId, hour });
-		} catch (error) {
-			Logger.error('DayView', 'Error updating task time:', error);
-			new Notice(i18n.t('views.dayView.updateTimeFailed'));
-		}
+		void (async () => {
+			try {
+				const newDate = new Date(normalized);
+				newDate.setHours(hour, 0, 0, 0);
+				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateField]: 'time' };
+				await updateTaskDateField(app, sourceTask, dateField, newDate, plugin.settings.enabledTaskFormats);
+				Logger.debug('DayView', 'Task time updated via drag-drop', { taskId, hour });
+			} catch (error) {
+				Logger.error('DayView', 'Error updating task time:', error);
+				new Notice(i18n.t('views.dayView.updateTimeFailed'));
+			}
+		})();
 	}, [app, dateField, plugin.settings.enabledTaskFormats, tasks, normalized]);
+
+	const { onDragOver: slotDragOver, onDragLeave: slotDragLeave, onDrop: slotDrop } = useDropTarget({
+		onDrop: (taskId, e) => {
+			const slot = e.currentTarget;
+			const slotIdx = slot.dataset.hour ? parseInt(slot.dataset.hour, 10) : 0;
+			handleHourDrop(taskId, slotIdx);
+		},
+		activeClass: DayViewClasses.modifiers.timeSlotDragOver,
+	});
+
+	const slotDropProps = (hour: number): { onDragOver: (e: ReactDragEvent<HTMLDivElement>) => void; onDragLeave: (e: ReactDragEvent<HTMLDivElement>) => void; onDrop: (e: ReactDragEvent<HTMLDivElement>) => void; 'data-hour': number } => ({
+		onDragOver: slotDragOver,
+		onDragLeave: slotDragLeave,
+		onDrop: slotDrop,
+		'data-hour': hour,
+	});
 
 	// ===== 空时间格快速创建 =====
 	const handleSlotCreateClick = useCallback((e: ReactMouseEvent<HTMLDivElement>, hour: number) => {
 		e.stopPropagation();
-		const modal = new CreateTaskModal({
+		openCreateTaskModal({
 			app,
 			plugin,
 			targetDate: normalized,
@@ -179,83 +170,29 @@ export function DayView(): JSX.Element {
 			onSuccess: () => {
 			},
 		});
-		modal.open();
 	}, [app, plugin, normalized]);
 
-	const openQuickCreate = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
-		setIcon(e.currentTarget, 'plus');
-	}, []);
-
-	const closeQuickCreate = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
-		e.currentTarget.empty();
-	}, []);
-
 	// ===== 分割线拖拽（水平/垂直） =====
-	const splitRef = useRef<HTMLDivElement | null>(null);
 	const tasksSectionRef = useRef<HTMLDivElement | null>(null);
 	const notesSectionRef = useRef<HTMLDivElement | null>(null);
 
-	const handleDividerMouseDown = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
-		const divider = e.currentTarget;
-		const container = divider.parentElement;
-		const tasksSection = tasksSectionRef.current;
-		const notesSection = notesSectionRef.current;
-		if (!container || !tasksSection || !notesSection) return;
+	const handleDividerMouseDown = useResizeDivider({
+		direction: 'horizontal',
+		firstRef: tasksSectionRef,
+		secondRef: notesSectionRef,
+	});
 
-		const startX = e.clientX;
-		const startTasksWidth = tasksSection.offsetWidth;
-		const totalWidth = container.offsetWidth;
-
-		const mouseMoveHandler = (moveEvent: MouseEvent) => {
-			const deltaX = moveEvent.clientX - startX;
-			const newTasksWidth = Math.max(100, startTasksWidth + deltaX);
-			const newNotesWidth = Math.max(100, totalWidth - newTasksWidth - 8);
-			tasksSection.style.flex = `0 0 ${newTasksWidth}px`;
-			notesSection.style.flex = `0 0 ${newNotesWidth}px`;
-		};
-
-		const mouseUpHandler = () => {
-			activeDocument.removeEventListener('mousemove', mouseMoveHandler);
-			activeDocument.removeEventListener('mouseup', mouseUpHandler);
-		};
-
-		activeDocument.addEventListener('mousemove', mouseMoveHandler);
-		activeDocument.addEventListener('mouseup', mouseUpHandler);
-	}, []);
-
-	const handleDividerMouseDownVertical = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
-		const container = e.currentTarget.parentElement;
-		const tasksSection = tasksSectionRef.current;
-		const notesSection = notesSectionRef.current;
-		if (!container || !tasksSection || !notesSection) return;
-
-		const startY = e.clientY;
-		const startTasksHeight = tasksSection.offsetHeight;
-		const totalHeight = container.offsetHeight;
-
-		const mouseMoveHandler = (moveEvent: MouseEvent) => {
-			const deltaY = moveEvent.clientY - startY;
-			const newTasksHeight = Math.max(100, startTasksHeight + deltaY);
-			const newNotesHeight = Math.max(100, totalHeight - newTasksHeight - 8);
-			tasksSection.style.flex = `0 0 ${newTasksHeight}px`;
-			notesSection.style.flex = `0 0 ${newNotesHeight}px`;
-		};
-
-		const mouseUpHandler = () => {
-			activeDocument.removeEventListener('mousemove', mouseMoveHandler);
-			activeDocument.removeEventListener('mouseup', mouseUpHandler);
-		};
-
-		activeDocument.addEventListener('mousemove', mouseMoveHandler);
-		activeDocument.addEventListener('mouseup', mouseUpHandler);
-	}, []);
+	const handleDividerMouseDownVertical = useResizeDivider({
+		direction: 'vertical',
+		firstRef: tasksSectionRef,
+		secondRef: notesSectionRef,
+	});
 
 	// ===== 嵌入式 Daily Note =====
 	const notesContentRef = useRef<HTMLDivElement | null>(null);
 	const editorRef = useRef<EmbeddedNoteEditor | null>(null);
 	const notesTitleRef = useRef<HTMLHeadingElement | null>(null);
 	const modeToggleRef = useRef<HTMLButtonElement | null>(null);
-	const modeIconRef = useRef<HTMLSpanElement | null>(null);
 	const [editorMode, setEditorMode] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -311,14 +248,11 @@ export function DayView(): JSX.Element {
 	}, []);
 
 	useEffect(() => {
-		const iconEl = modeIconRef.current;
 		const btnEl = modeToggleRef.current;
-		if (!iconEl || !btnEl) return;
+		if (!btnEl) return;
 		if (editorMode === 'source' || editorMode === null) {
-			setIcon(iconEl, 'pencil');
 			btnEl.setAttribute('aria-label', i18n.t('views.dayView.switchToPreview'));
 		} else {
-			setIcon(iconEl, 'book-open');
 			btnEl.setAttribute('aria-label', i18n.t('views.dayView.switchToEdit'));
 		}
 	}, [editorMode]);
@@ -335,9 +269,7 @@ export function DayView(): JSX.Element {
 								<div
 									key={h}
 									className={DayViewClasses.elements.timeSlot}
-									onDragOver={handleSlotDragOver}
-									onDragLeave={handleSlotDragLeave}
-									onDrop={(e) => void handleSlotDrop(e, h)}
+									{...slotDropProps(h)}
 								>
 									<div className={DayViewClasses.elements.timeLabel}>
 										{`${String(h).padStart(2, '0')}:00`}
@@ -356,10 +288,10 @@ export function DayView(): JSX.Element {
 									{hourTasks.length === 0 ? (
 										<div
 											className={DayViewClasses.elements.slotCreate}
-											onMouseEnter={openQuickCreate}
-											onMouseLeave={closeQuickCreate}
 											onClick={(e) => handleSlotCreateClick(e, h)}
-										/>
+										>
+											<Icon icon="plus" />
+										</div>
 									) : null}
 								</div>
 							);
@@ -410,7 +342,6 @@ export function DayView(): JSX.Element {
 	return (
 		<div className="gc-view gc-view--day">
 			<div
-				ref={splitRef}
 				className={layout === 'horizontal' ? DayViewClasses.modifiers.horizontal : DayViewClasses.modifiers.vertical}
 			>
 				<div ref={tasksSectionRef} className={DayViewClasses.elements.sectionTasks}>
@@ -430,7 +361,7 @@ export function DayView(): JSX.Element {
 							aria-label={i18n.t('views.dayView.switchToPreview')}
 							onClick={handleModeToggle}
 						>
-							<span ref={modeIconRef} />
+							<Icon icon={editorMode === 'source' || editorMode === null ? 'pencil' : 'book-open'} />
 						</button>
 					</div>
 					<div ref={notesContentRef} className={DayViewClasses.elements.notesContent} />
