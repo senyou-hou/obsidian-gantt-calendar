@@ -34,6 +34,7 @@ export function GanttView(): JSX.Element {
 	const app = useApp();
 	const tasks = useCalendarStore((s) => s.tasks);
 	const filter = useCalendarStore((s) => selectViewFilter(s, 'gantt'));
+	const ganttScroll = useCalendarStore((s) => s.ganttScroll);
 	const refreshTasks = useCalendarStore((s) => s.refreshTasks);
 
 	const startField = plugin.settings.ganttStartField;
@@ -174,6 +175,16 @@ export function GanttView(): JSX.Element {
 		}
 		engine.updateTasks(ganttTasks);
 	}, [ganttTasks, hasTasks, startField, endField, buildEngine, destroyEngine]);
+
+	useEffect(() => {
+		const engine = engineRef.current;
+		if (!engine || !readyRef.current || !hasTasks || !ganttScroll) return;
+		switch (ganttScroll.action) {
+			case 'left': engine.scrollToLeft(); break;
+			case 'today': engine.scrollToToday(); break;
+			case 'right': engine.scrollToRight(); break;
+		}
+	}, [ganttScroll, hasTasks]);
 
 	const emptyReasons = useMemo(() => {
 		const reasons: string[] = [];

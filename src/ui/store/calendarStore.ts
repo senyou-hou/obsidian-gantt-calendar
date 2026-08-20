@@ -14,6 +14,8 @@ import {
 
 export type ViewScope = 'year' | 'month' | 'week' | 'day' | 'task' | 'gantt' | 'sidebar';
 
+export type GanttScrollAction = 'left' | 'today' | 'right';
+
 export interface ViewFilterState {
 	status: StatusFilterState;
 	tag: TagFilterState;
@@ -32,6 +34,9 @@ interface CalendarStoreState {
 	/** 每个视图作用域独立的筛选/排序状态（视图切换时保留） */
 	viewFilters: Record<ViewScope, ViewFilterState>;
 
+	/** 甘特图滚动请求（工具栏按钮 → GanttView 引擎） */
+	ganttScroll: { seq: number; action: GanttScrollAction } | null;
+
 	setViewType: (type: CalendarViewType) => void;
 	setCurrentDate: (date: Date) => void;
 	/** 数据层 TaskStore 通知时调用（防抖已由 TaskStore 处理） */
@@ -39,6 +44,8 @@ interface CalendarStoreState {
 	setTasks: (tasks: GCTask[]) => void;
 	/** 设置/视图全量刷新：自增 settingsVersion，触发整体重挂载 */
 	bumpSettings: () => void;
+	/** 请求甘特图滚动（每次调用自增 seq，GanttView 订阅执行） */
+	requestGanttScroll: (action: GanttScrollAction) => void;
 
 	setStatusFilter: (scope: ViewScope, state: StatusFilterState) => void;
 	setTagFilter: (scope: ViewScope, tag: TagFilterState) => void;
@@ -70,6 +77,7 @@ export const useCalendarStore = create<CalendarStoreState>((set) => ({
 	updateSeq: 0,
 	viewFilters: buildInitialFilters(),
 	settingsVersion: 0,
+	ganttScroll: null,
 
 	setViewType: (type) => set({ viewType: type }),
 	setCurrentDate: (date) => set({ currentDate: new Date(date) }),
@@ -77,6 +85,8 @@ export const useCalendarStore = create<CalendarStoreState>((set) => ({
 		set((s) => ({ tasks, changedFilePath: filePath, updateSeq: s.updateSeq + 1 })),
 	setTasks: (tasks) => set({ tasks }),
 	bumpSettings: () => set((s) => ({ settingsVersion: s.settingsVersion + 1 })),
+	requestGanttScroll: (action) =>
+		set((s) => ({ ganttScroll: { seq: (s.ganttScroll?.seq ?? 0) + 1, action } })),
 	/** 任务写回后触发一次顺带重渲染（数据最终由事件总线回流） */
 	refreshTasks: () => set((s) => ({ updateSeq: s.updateSeq + 1 })),
 

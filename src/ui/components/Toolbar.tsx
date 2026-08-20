@@ -237,6 +237,7 @@ export function ToolbarBar(): JSX.Element {
 	// ===== 渲染 =====
 	const isCalendar = viewType === 'year' || viewType === 'month' || viewType === 'week' || viewType === 'day';
 	const showStatusSort = viewType === 'month' || viewType === 'week' || viewType === 'day';
+	const requestGanttScroll = useCalendarStore((s) => s.requestGanttScroll);
 
 	return (
 		<div className={ToolbarClasses.block}>
@@ -348,6 +349,49 @@ export function ToolbarBar(): JSX.Element {
 								label={i18n.t('toolbar.nav.next')}
 								onClick={() => navigate(1)}
 							/>
+						</div>
+					</>
+				)}
+
+				{viewType === 'gantt' && (
+					<>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<ToolbarBtn
+								icon="chevrons-left"
+								label={i18n.t('toolbar.ganttScroll.scrollLeft')}
+								onClick={() => requestGanttScroll('left')}
+							/>
+							<ToolbarBtn
+								text={i18n.t('toolbar.nav.today')}
+								label={i18n.t('toolbar.ganttScroll.goToday')}
+								onClick={() => requestGanttScroll('today')}
+							/>
+							<ToolbarBtn
+								icon="chevrons-right"
+								label={i18n.t('toolbar.ganttScroll.scrollRight')}
+								onClick={() => requestGanttScroll('right')}
+							/>
+						</div>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={statusMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="filter" label={i18n.t('toolbar.statusFilter.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
+						</div>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={sortMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="arrow-down-up" label={i18n.t('toolbar.sort.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
+						</div>
+						<div className={ToolbarClasses.components.navButtons.group}>
+							<DropdownMenu sections={tagMenuSections()}>
+								{({ onClick, 'aria-expanded': expanded }) => (
+									<ToolbarBtn icon="tag" label={i18n.t('toolbar.tagFilter.ariaLabel')} ariaExpanded={expanded} onClick={onClick} />
+								)}
+							</DropdownMenu>
 						</div>
 					</>
 				)}
