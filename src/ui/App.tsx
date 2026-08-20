@@ -1,4 +1,5 @@
 import { type JSX } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useCalendarStore } from './store/calendarStore';
 import { ToolbarBar } from './components/Toolbar';
 import { TooltipProvider } from './components/TooltipProvider';
@@ -10,6 +11,7 @@ import { DayView } from './views/DayView';
 import { TaskView } from './views/TaskView';
 import { GanttView } from './views/GanttView';
 import type { CalendarViewType } from '../types';
+import { MOTION, easeOutTransition } from './motion';
 
 function renderView(viewType: CalendarViewType): JSX.Element {
 	switch (viewType) {
@@ -47,13 +49,28 @@ export function App(): JSX.Element {
 					style={{ overflow: isWaterfall ? 'auto' : undefined, height: '100%' }}
 				>
 					<ToolbarBar />
-					<div
-						key={`${viewType}-${settingsVersion}`}
-						className={`calendar-content${isGantt ? ' gantt-mode' : ''}`}
-						style={{ overflow: isWaterfall ? 'visible' : undefined }}
-					>
-						{renderView(viewType)}
-					</div>
+					<AnimatePresence mode="wait" initial={false}>
+						{!isGantt ? (
+							<motion.div
+								key={`${viewType}-${settingsVersion}`}
+								className={`calendar-content${isGantt ? ' gantt-mode' : ''}`}
+								style={{ overflow: isWaterfall ? 'visible' : undefined }}
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								transition={easeOutTransition(MOTION.dur.normal)}
+							>
+								{renderView(viewType)}
+							</motion.div>
+						) : (
+							<div
+								key={`gantt-${settingsVersion}`}
+								className="calendar-content gantt-mode"
+							>
+								<GanttView />
+							</div>
+						)}
+					</AnimatePresence>
 				</div>
 			</TooltipProvider>
 		</ModalProvider>

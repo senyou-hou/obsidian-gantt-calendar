@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'motion/react';
 import { ContextMenuClasses } from '../../utils/bem';
 import { Icon } from './Icon';
+import { MOTION, panelVariants, easeOutTransition } from '../motion';
 
 export interface ContextMenuItemDef {
 	key: string;
@@ -76,36 +78,43 @@ export function ContextMenuTrigger({
 			onContextMenu={handleContextMenu}
 		>
 			{children}
-			{state
-				? createPortal(
-						<div
-							ref={menuRef}
-							className={ContextMenuClasses.container}
-							style={{ position: 'fixed', left: state.x, top: state.y }}
-						>
-							{sections.map((section, si) => (
-								<div key={si} className={ContextMenuClasses.section}>
-									{section.items.map((item) => (
-										<button
-											key={item.key}
-											className={`${ContextMenuClasses.item}${item.disabled ? ` ${ContextMenuClasses.itemDisabled}` : ''}`}
-											disabled={item.disabled}
-											onClick={() => {
-												if (item.disabled) return;
-												close();
-												item.onClick?.();
-											}}
-										>
-											{item.icon ? <Icon icon={item.icon} className={ContextMenuClasses.itemIcon} /> : null}
-											<span className={ContextMenuClasses.itemLabel}>{item.title}</span>
-										</button>
-									))}
-								</div>
-							))}
-						</div>,
-						document.body
-					)
-				: null}
+			<AnimatePresence>
+				{state
+					? createPortal(
+							<motion.div
+								ref={menuRef}
+								className={ContextMenuClasses.container}
+								style={{ position: 'fixed', left: state.x, top: state.y }}
+								variants={panelVariants}
+								initial="initial"
+								animate="animate"
+								exit="exit"
+								transition={easeOutTransition(MOTION.dur.fast)}
+							>
+								{sections.map((section, si) => (
+									<div key={si} className={ContextMenuClasses.section}>
+										{section.items.map((item) => (
+											<button
+												key={item.key}
+												className={`${ContextMenuClasses.item}${item.disabled ? ` ${ContextMenuClasses.itemDisabled}` : ''}`}
+												disabled={item.disabled}
+												onClick={() => {
+													if (item.disabled) return;
+													close();
+													item.onClick?.();
+												}}
+											>
+												{item.icon ? <Icon icon={item.icon} className={ContextMenuClasses.itemIcon} /> : null}
+												<span className={ContextMenuClasses.itemLabel}>{item.title}</span>
+											</button>
+										))}
+									</div>
+								))}
+							</motion.div>,
+							document.body
+						)
+					: null}
+			</AnimatePresence>
 		</div>
 	);
 }

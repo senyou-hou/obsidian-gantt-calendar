@@ -11,11 +11,13 @@ import {
 	type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'motion/react';
 import type { GCTask } from '../../types';
 import { formatDate } from '../../dateUtils/dateUtilsIndex';
 import { i18n } from '../../i18n/i18n';
 import { TooltipClasses } from '../../utils/bem';
 import { TagPillSpan } from './TagPillSpan';
+import { MOTION, tooltipVariants, easeOutTransition } from '../motion';
 
 interface TooltipState {
 	task: GCTask;
@@ -97,12 +99,14 @@ export function TooltipProvider({ children }: { children: ReactNode }): JSX.Elem
 	return (
 		<TooltipContext.Provider value={value}>
 			{children}
-			{state ? (
-				<TooltipContent
-					state={state}
-					onClose={() => setState(null)}
-				/>
-			) : null}
+			<AnimatePresence>
+				{state ? (
+					<TooltipContent
+						state={state}
+						onClose={() => setState(null)}
+					/>
+				) : null}
+			</AnimatePresence>
 		</TooltipContext.Provider>
 	);
 }
@@ -156,9 +160,14 @@ function TooltipContent({ state, onClose }: { state: TooltipState; onClose: () =
 	const sections = useMemo(() => buildTooltipSections(task), [task]);
 
 	return createPortal(
-		<div
+		<motion.div
 			className={`${TooltipClasses.block} ${TooltipClasses.modifiers.visible}`}
-			style={{ left: `${position.left}px`, top: `${position.top}px`, opacity: 1 }}
+			style={{ left: `${position.left}px`, top: `${position.top}px` }}
+			variants={tooltipVariants}
+			initial="initial"
+			animate="animate"
+			exit="exit"
+			transition={easeOutTransition(MOTION.dur.fast)}
 		>
 			<div className={TooltipClasses.elements.description}>
 				<strong>{task.description || ''}</strong>
@@ -201,7 +210,7 @@ function TooltipContent({ state, onClose }: { state: TooltipState; onClose: () =
 					</div>
 				))}
 			</div>
-		</div>,
+		</motion.div>,
 		document.body
 	);
 }

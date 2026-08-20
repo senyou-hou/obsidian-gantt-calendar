@@ -1,7 +1,9 @@
 import { useEffect, useRef, type JSX, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'motion/react';
 import { ModalClasses } from '../../utils/bem';
 import { Icon } from './Icon';
+import { MOTION, modalVariants, overlayVariants, easeOutTransition } from '../motion';
 
 export interface ModalProps {
 	open: boolean;
@@ -42,33 +44,42 @@ export function Modal({
 		return () => document.removeEventListener('keydown', handleKeydown);
 	}, [open, closeOnEsc, onClose]);
 
-	if (!open) return null;
-
 	const classes = [ModalClasses.overlay, className].filter(Boolean).join(' ');
 
 	return createPortal(
-		<div
-			className={classes}
-			onMouseDown={(e) => {
-				if (closeOnClickOutside && e.target === e.currentTarget) onClose();
-			}}
-		>
-			<div
-				ref={panelRef}
-				className={ModalClasses.panel}
-				style={width ? { width: `${width}px`, maxWidth: '90vw' } : undefined}
-			>
-				{title !== undefined ? (
-					<div className={ModalClasses.header}>
-						<h2 className={ModalClasses.title}>{title}</h2>
-						<button className={ModalClasses.closeBtn} aria-label="Close" onClick={onClose}>
-							<Icon icon="x" />
-						</button>
-					</div>
-				) : null}
-				<div className={ModalClasses.content}>{children}</div>
-			</div>
-		</div>,
+		<AnimatePresence>
+			{open ? (
+				<motion.div
+					className={classes}
+					variants={overlayVariants}
+					initial="initial"
+					animate="animate"
+					exit="exit"
+					transition={easeOutTransition(MOTION.dur.normal)}
+					onMouseDown={(e) => {
+						if (closeOnClickOutside && e.target === e.currentTarget) onClose();
+					}}
+				>
+					<motion.div
+						ref={panelRef}
+						className={ModalClasses.panel}
+						style={width ? { width: `${width}px`, maxWidth: '90vw' } : undefined}
+						variants={modalVariants}
+						transition={easeOutTransition(MOTION.dur.slow)}
+					>
+						{title !== undefined ? (
+							<div className={ModalClasses.header}>
+								<h2 className={ModalClasses.title}>{title}</h2>
+								<button className={ModalClasses.closeBtn} aria-label="Close" onClick={onClose}>
+									<Icon icon="x" />
+								</button>
+							</div>
+						) : null}
+						<div className={ModalClasses.content}>{children}</div>
+					</motion.div>
+				</motion.div>
+			) : null}
+		</AnimatePresence>,
 		document.body
 	);
 }

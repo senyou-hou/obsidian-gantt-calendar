@@ -1,0 +1,255 @@
+/* ========================================
+   LAYER 2: Tools (工具层)
+   Not applicable for plain CSS
+   ======================================== */
+
+/* ========================================
+   LAYER 3: Generic (通用层)
+   Reset & Normalize
+   ======================================== */
+/* Obsidian默认样式，无需额外reset */
+
+/* ========================================
+   LAYER 4: Base (基础层)
+   HTML Element Defaults
+   ======================================== */
+/* 本项目主要使用类名，基础样式较少 */
+
+/* ========================================
+   LAYER 5: Objects (对象层)
+   Layout Structures (No Visuals)
+   ======================================== */
+
+/* Main Container */
+.calendar-content {
+	padding: 12px;
+	height: 100%;
+	box-sizing: border-box;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.calendar-content.gantt-mode {
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+.view-content.gantt-root {
+	overflow: hidden;
+}
+
+/* Calendar Grid Layouts */
+.gc-week-view__grid {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	margin-top: 0;
+	flex: 1;
+	overflow: visible;
+	min-height: 0;
+	position: relative;
+}
+
+.gc-week-view__header-row {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 0;
+	flex-shrink: 0;
+	z-index: 5;
+	position: sticky;
+	top: 0;
+}
+
+.gc-week-view__tasks-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 0;
+	overflow-y: visible;
+	overflow-x: hidden;
+	flex: 1 1 auto;
+	min-height: 0;
+	position: relative;
+}
+
+/* Gantt Layout Objects */
+/* BEM命名: gc-view--gantt */
+.gc-view.gc-view--gantt {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	position: relative;
+}
+
+.gc-gantt-view__body {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	gap: 0;
+	overflow: hidden;
+}
+
+.gc-gantt-view__task-list {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	overflow-x: hidden;
+	min-height: 0;
+	padding-right: 4px;
+	display: grid;
+	grid-auto-rows: 40px;
+	gap: 6px;
+	align-content: start;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+
+.gc-gantt-view__task-list::-webkit-scrollbar {
+	display: none;
+}
+
+.gc-gantt-view__time {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	overflow: hidden;
+}
+
+.gc-gantt-view__bars-grid {
+	display: grid;
+	grid-auto-rows: 40px;
+	gap: 6px;
+	align-content: start;
+}
+
+/* ==================== Year/Month/Week Layout ==================== */
+/* BEM命名: gc-view--year/--month/--week */
+.gc-view.gc-view--year {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+/* BEM: 年视图月份网格 — CSS auto-fill 响应式布局 */
+.gc-view--year .gc-year-view__months {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(250px, 300px));
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	padding: 12px;
+	align-content: start;
+}
+
+/* ========================================
+   月视图单一Grid布局（7行8列）
+   ======================================== */
+.gc-view.gc-view--month {
+	display: grid;
+	/* 7行: 第1行星期标题(自动高度) + 6行日期(均分空间) */
+	grid-template-rows: auto repeat(6, 1fr);
+	/* 8列: 第1列周数(40px固定) + 7列星期(均分) */
+	grid-template-columns: 40px repeat(7, 1fr);
+	gap: 0;
+	height: 100%;
+	padding: 8px;
+	overflow: hidden;
+}
+
+/* Week/Day Layout */
+.gc-view.gc-view--week {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	flex: 1;
+	overflow: visible;
+	height: auto;
+}
+
+.gc-week-view__days {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 12px;
+}
+
+/* ==================== Day View Layout ==================== */
+/* BEM命名: gc-day-view, gc-view */
+.gc-day-view,
+.gc-view.gc-view--day {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-width: 100%;
+	margin: 0;
+	height: auto;
+	flex: 1;
+	overflow-y: visible;
+	padding: 12px;
+}
+
+/* 水平分屏布局修饰符 */
+.gc-day-view--horizontal {
+	display: flex;
+	gap: 0;
+	width: 100%;
+	height: 100%;
+	flex: 1;
+	min-height: 0;
+}
+
+/* 垂直分屏布局修饰符 */
+.gc-day-view--vertical {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	width: 100%;
+	height: 100%;
+	flex: 1;
+	min-height: 0;
+}
+
+/* ==================== Task View Layout ==================== */
+/* BEM命名: gc-view--task (Modifier) */
+.gc-view--task {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 12px;
+	height: auto;
+	flex: none;
+	overflow: visible;
+	width: 100%;
+}
+
+
+/* ========================================
+   触屏设备适配（移动端 / 触控屏）
+   加大点击区；触屏无 hover，移除粘滞微动效
+   ======================================== */
+
+@media (hover: none) {
+	.gc-toolbar__btn,
+	.gc-toolbar__view-selector-btn,
+	.gc-task-card,
+	.gc-dropdown-menu__item,
+	.gc-context-menu__item,
+	.gc-month-view__day-cell,
+	.gc-sidebar__tab-button {
+		min-height: 32px;
+	}
+
+	/* 触屏无 hover 状态，避免悬停微动效残留 */
+	.gc-task-card:hover {
+		transform: none;
+		box-shadow: none;
+	}
+}

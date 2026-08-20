@@ -1,0 +1,267 @@
+/* ==================== Task Tooltip ==================== */
+/* BEM命名: gc-task-tooltip */
+.gc-task-tooltip {
+	position: fixed;
+	z-index: 1000;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	padding: 12px;
+	max-width: 300px;
+	min-width: 250px;
+	font-size: 13px;
+	line-height: 1.47;
+	letter-spacing: -0.01px;
+	pointer-events: none;
+	opacity: 0;
+	transform: translateY(-8px) scale(0.95);
+	transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+	            transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gc-task-tooltip--visible {
+	opacity: 1;
+	transform: translateY(0) scale(1);
+}
+
+.gc-task-tooltip .gc-task-tooltip__description {
+	margin-bottom: 8px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--divider-color);
+	color: var(--text-normal);
+	word-break: break-word;
+}
+
+.gc-task-tooltip .gc-task-tooltip__description strong {
+	font-weight: 600;
+	font-size: 14px;
+}
+
+/* --- 属性区域 --- */
+.gc-task-tooltip .gc-task-tooltip__properties {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.gc-task-tooltip .gc-task-tooltip__property-section {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding: 8px 8px 8px 12px;
+	background-color: var(--background-secondary);
+	border-radius: 6px;
+}
+
+.gc-task-tooltip .gc-task-tooltip__property-row {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.gc-task-tooltip .gc-task-tooltip__property-label {
+	flex-shrink: 0;
+	min-width: 36px;
+	white-space: nowrap;
+	font-size: 12px;
+	color: var(--text-muted);
+	letter-spacing: -0.01px;
+}
+
+.gc-task-tooltip .gc-task-tooltip__property-value {
+	color: var(--text-normal);
+	font-size: 13px;
+	word-break: break-word;
+}
+
+.gc-task-tooltip .gc-task-tooltip__property-value--overdue {
+	color: #d73a49;
+	font-weight: 600;
+}
+
+.gc-task-tooltip .gc-task-tooltip__property-divider {
+	height: 1px;
+	background-color: rgba(0, 0, 0, 0.06);
+	margin: 2px 0;
+}
+
+.gc-task-tooltip .priority-highest {
+	color: #d73a49;
+}
+
+.gc-task-tooltip .priority-high {
+	color: #e36209;
+}
+
+.gc-task-tooltip .priority-medium {
+	color: #ffd33d;
+}
+
+.gc-task-tooltip .priority-low {
+	color: #28a745;
+}
+
+.gc-task-tooltip .priority-lowest {
+	color: #0366d6;
+}
+
+.gc-task-tooltip .gc-task-tooltip__tags {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.gc-task-tooltip .gc-task-tooltip__file-location {
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+.gc-week-view__empty {
+	padding: 16px 8px;
+	text-align: center;
+	color: var(--text-muted);
+	font-size: 12px;
+}
+
+/* ==================== Week View Timeline ==================== */
+/* 周视图时间轴模式 - 当周内有定时任务时激活 */
+/* 核心：header + 时间标尺 + 任务格全部在同一 grid 中，保证行列完美对齐 */
+.gc-week-view--timeline .gc-week-view__tasks-grid {
+	display: grid;
+	grid-template-columns: 48px repeat(7, 1fr);
+	grid-template-rows: 52px auto repeat(24, var(--gc-tl-slot-h));
+	align-content: start;
+	overflow-y: auto;
+	overflow-x: hidden;
+	flex: 1 1 auto;
+	min-height: 0;
+	position: relative;
+}
+
+/* Header 占位格（第 1 列第 1 行） */
+.gc-week-view__header-spacer {
+	border-right: 1px solid var(--background-modifier-border);
+	border-bottom: 2px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	position: sticky;
+	top: 0;
+	z-index: 5;
+}
+
+/* 时间轴模式下 header cell（sticky） */
+.gc-week-view--timeline .gc-week-view__header-cell {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	background-color: var(--background-primary);
+}
+
+/* 时间标尺格（第 1 列，第 2-25 行） */
+.gc-week-view__time-gutter-slot {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+	padding: 2px 6px 0 0;
+	height: var(--gc-tl-slot-h);
+	border-top: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.gc-week-view__time-gutter-slot:first-of-type {
+	border-top: none;
+}
+
+/* 全天任务行 gutter（第 1 列第 2 行） */
+.gc-week-view__allday-gutter {
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+	padding: 0 6px 0 0;
+	font-size: 11px;
+	color: var(--text-muted);
+	border-right: 1px solid var(--background-modifier-border);
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary-alt);
+}
+
+/* 全天任务格 */
+.gc-week-view__allday-slot {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gc-tl-card-gap);
+	padding: 0 4px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-right: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary-alt);
+	transition: background-color 0.15s ease;
+}
+
+.gc-week-view__allday-tasks {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gc-tl-card-gap);
+	min-height: var(--gc-tl-card-h);
+}
+
+.gc-week-view__allday-slot--drag-over {
+	background-color: var(--background-modifier-hover);
+}
+
+.gc-week-view__time-gutter-label {
+	font-size: 11px;
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+/* 任务时间格（第 2-8 列，第 2-25 行） */
+.gc-week-view__time-slot {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 0 4px;
+	height: var(--gc-tl-slot-h);
+	overflow: hidden;
+	border-top: 1px solid var(--background-modifier-border);
+	border-right: 1px solid var(--background-modifier-border);
+	position: relative;
+}
+
+.gc-week-view__time-tasks {
+	display: flex;
+	flex-direction: column;
+	gap: var(--gc-tl-card-gap);
+	overflow: hidden;
+}
+
+.gc-week-view__row--drag-over {
+	background-color: var(--background-modifier-hover);
+	transition: background-color 0.15s ease;
+}
+
+/* Week View — 当前时间指示线 */
+.gc-week-view__timeline-current-time {
+	position: absolute;
+	left: 48px;
+	right: 0;
+	height: 2px;
+	background-color: var(--interactive-accent);
+	z-index: 10;
+	pointer-events: none;
+}
+
+.gc-week-view__timeline-current-time::before {
+	content: '';
+	position: absolute;
+	left: -5px;
+	top: -3px;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--interactive-accent);
+}
+

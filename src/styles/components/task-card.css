@@ -1,0 +1,461 @@
+/* ============================================
+   标签筛选下拉面板样式 (BEM: gc-toolbar)
+   ============================================ */
+
+.gc-toolbar__tag-filter-pane {
+	position: fixed;
+	z-index: 999;
+	/* 确保 Obsidian aria-label tooltip 显示在面板之上 */
+	min-width: 200px;
+	max-height: 320px;
+	overflow-y: auto;
+	background: color-mix(in srgb, var(--background-primary) 20%, transparent);
+	border: 1px solid color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+	border-radius: 8px;
+	padding: 0;
+	box-shadow:
+		0 8px 24px rgba(0, 0, 0, 0.12),
+		0 2px 6px rgba(0, 0, 0, 0.08),
+		inset 0 1px 0 rgba(255, 255, 255, 0.15);
+	backdrop-filter: blur(20px) saturate(180%);
+	-webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.gc-toolbar__tag-filter-pane::-webkit-scrollbar {
+	width: 4px;
+}
+
+
+.gc-toolbar__tag-filter-pane::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.gc-toolbar__tag-filter-pane::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border);
+	border-radius: 2px;
+}
+
+.gc-toolbar__tag-filter-pane::-webkit-scrollbar-thumb:hover {
+	background: var(--text-muted);
+}
+
+.gc-toolbar__tag-filter-dropdown-header {
+	padding: 8px 12px;
+	font-size: var(--gc-font-xs);
+	font-weight: 600;
+	color: var(--text-muted);
+	border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 40%, transparent);
+	margin-bottom: 4px;
+}
+
+.gc-toolbar__tag-filter-operators {
+	display: flex;
+	gap: 6px;
+	padding: 4px 8px 8px;
+	margin-bottom: 4px;
+	border-bottom: 1px solid color-mix(in srgb, var(--background-modifier-border) 40%, transparent);
+}
+
+.gc-toolbar__tag-filter-operator-btn {
+	flex: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px 14px;
+	border-radius: 9999px;
+	cursor: pointer;
+	font-size: var(--gc-font-xxs);
+	font-weight: 600;
+	letter-spacing: -0.12px;
+	user-select: none;
+	background: transparent;
+	color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border);
+	transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.gc-toolbar__tag-filter-operator-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.gc-toolbar__tag-filter-operator-btn--active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.gc-toolbar__tag-filter-operator-btn--active:hover {
+	filter: brightness(1.1);
+}
+
+.gc-toolbar__tag-filter-tags-grid {
+	padding: 0 4px 4px;
+}
+
+.gc-toolbar__tag-filter-tag-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 5px 8px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.12s ease;
+	user-select: none;
+}
+
+.gc-toolbar__tag-filter-tag-item:hover {
+	background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+}
+
+.gc-toolbar__tag-filter-tag-item--selected {
+	background: color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+}
+
+.gc-toolbar__tag-filter-tag-checkbox {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 16px;
+	height: 16px;
+	border: 1.5px solid var(--background-modifier-border-hover);
+	border-radius: 3px;
+}
+
+.gc-toolbar__tag-filter-tag-checkbox svg {
+	display: block;
+	width: 12px;
+	height: 12px;
+}
+
+.gc-toolbar__tag-filter-tag-name {
+	flex: 1;
+	font-size: var(--gc-font-xs);
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.gc-toolbar__tag-filter-tag-item--selected .gc-toolbar__tag-filter-tag-name {
+	font-weight: 600;
+}
+
+.gc-toolbar__tag-filter-tag-count {
+	font-size: var(--gc-font-xxs);
+	color: var(--text-muted);
+	background: var(--background-modifier-border);
+	padding: 1px 6px;
+	border-radius: 8px;
+	font-weight: 500;
+	flex-shrink: 0;
+}
+
+.gc-toolbar__tag-filter-empty {
+	padding: 16px 12px;
+	text-align: center;
+	color: var(--text-muted);
+	font-size: var(--gc-font-xs);
+}
+
+	/* 标签树形结构：展开/折叠箭头 */
+	.gc-toolbar__tag-filter-tag-toggle {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		flex-shrink: 0;
+		cursor: pointer;
+		border-radius: 3px;
+		transition: background-color 120ms ease;
+	}
+	.gc-toolbar__tag-filter-tag-toggle:hover {
+		background: var(--background-modifier-hover);
+	}
+	.gc-toolbar__tag-filter-tag-toggle svg {
+		width: 12px;
+		height: 12px;
+	}
+
+	/* 标签树形结构：子节点容器 */
+	.gc-toolbar__tag-filter-tag-children {
+		overflow: hidden;
+	}
+
+	/* 标签树形结构：层级缩进 */
+	.gc-toolbar__tag-filter-tag-item--level-0 { padding-left: 8px; }
+	.gc-toolbar__tag-filter-tag-item--level-1 { padding-left: 24px; }
+	.gc-toolbar__tag-filter-tag-item--level-2 { padding-left: 40px; }
+	.gc-toolbar__tag-filter-tag-item--level-3 { padding-left: 56px; }
+	.gc-toolbar__tag-filter-tag-item--level-4 { padding-left: 72px; }
+
+/* 6.2 Task Card Component (统一任务卡片) */
+/* BEM命名: gc-task-card */
+.gc-task-card {
+	display: flex;
+	align-items: center;
+	padding: 8px;
+	border-left: 3px solid transparent;
+	background-color: var(--background-secondary);
+	border-radius: var(--gc-radius-sm);
+	cursor: pointer;
+	transition: background-color var(--gc-dur-fast) var(--gc-ease-out),
+		transform var(--gc-dur-fast) var(--gc-ease-out),
+		box-shadow var(--gc-dur-fast) var(--gc-ease-out);
+}
+
+.gc-task-card:hover {
+	background-color: var(--background-modifier-hover);
+	transform: translateY(-1px);
+	box-shadow: var(--gc-elev-2);
+}
+
+/* 时间轴模式的卡片固定高度，悬停不浮动（保持网格行高稳定） */
+.gc-sidebar__timeline-time-tasks .gc-task-card:hover,
+.gc-week-view__time-tasks .gc-task-card:hover,
+.gc-week-view__allday-tasks .gc-task-card:hover,
+.gc-day-view__time-tasks .gc-task-card:hover {
+	transform: none;
+	box-shadow: none;
+}
+
+.gc-task-card__text {
+	flex: 1;
+	word-break: break-word;
+	line-height: 1.4;
+	color: var(--text-normal);
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Task Card Modifiers */
+.gc-task-card--task {
+	padding: 10px;
+	gap: 8px;
+	flex-wrap: wrap;
+	font-size: var(--gc-font-sm);
+}
+
+.gc-task-card--day {
+	padding: 10px;
+	gap: 8px;
+	flex-wrap: wrap;
+	font-size: var(--gc-font-sm);
+}
+
+.gc-task-card--week {
+	padding: 8px;
+	gap: 4px;
+	font-size: var(--gc-font-sm);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 周视图：给文本添加左侧间距，补偿复选框后的gap */
+.gc-task-card--week .gc-task-card__text {
+	margin-left: 4px;
+}
+
+/* 周视图：移除标签容器的额外左侧间距，避免与文本间距过大 */
+.gc-task-card--week .gc-task-card__tags {
+	margin-left: 0;
+}
+
+/* ========== 时间轴视图内的任务卡片 — 固定高度，单行不换行 ========== */
+.gc-sidebar__timeline-time-tasks .gc-task-card,
+.gc-week-view__time-tasks .gc-task-card,
+.gc-week-view__allday-tasks .gc-task-card,
+.gc-day-view__time-tasks .gc-task-card {
+	height: var(--gc-tl-card-h);
+	padding: 2px 6px;
+	font-size: var(--gc-font-xs);
+	gap: 4px;
+	flex-wrap: nowrap;
+	overflow: hidden;
+	box-shadow: none;
+	border-left-width: 2px;
+}
+
+.gc-sidebar__timeline-time-tasks .gc-task-card__text,
+.gc-week-view__time-tasks .gc-task-card__text,
+.gc-week-view__allday-tasks .gc-task-card__text,
+.gc-day-view__time-tasks .gc-task-card__text {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.gc-sidebar__timeline-time-tasks .gc-task-card__tags,
+.gc-week-view__time-tasks .gc-task-card__tags,
+.gc-week-view__allday-tasks .gc-task-card__tags,
+.gc-day-view__time-tasks .gc-task-card__tags {
+	flex-wrap: nowrap;
+	overflow: hidden;
+	flex-shrink: 0;
+	max-width: 40%;
+}
+
+.gc-sidebar__timeline-time-tasks .gc-task-card__times,
+.gc-week-view__time-tasks .gc-task-card__times,
+.gc-week-view__allday-tasks .gc-task-card__times,
+.gc-day-view__time-tasks .gc-task-card__times {
+	flex-wrap: nowrap;
+	flex-shrink: 0;
+}
+
+.gc-sidebar__timeline-time-tasks .gc-task-card__checkbox,
+.gc-week-view__time-tasks .gc-task-card__checkbox,
+.gc-week-view__allday-tasks .gc-task-card__checkbox,
+.gc-day-view__time-tasks .gc-task-card__checkbox {
+	flex-shrink: 0;
+}
+
+.gc-task-card--month {
+	padding: 4px 6px;
+	font-size: var(--gc-font-xxs);
+	line-height: 1.3;
+	border-left-width: 2px;
+	border-radius: 3px;
+}
+
+.gc-task-card--gantt {
+	padding: 8px 12px;
+	border-left: 3px solid var(--interactive-accent);
+	border-top: 1px solid var(--background-modifier-border);
+	border-right: 1px solid var(--background-modifier-border);
+	border-bottom: 1px solid var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ==================== Task Tags Component ==================== */
+/* BEM命名: gc-tag (独立Block), gc-task-card__tags (作为任务卡Element) */
+
+/* Tags inline container - 任务标签容器 */
+.gc-task-card__tags {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 4px;
+	flex-wrap: wrap;
+	margin-left: 4px;
+}
+
+/* ========================================
+   Tag 组件统一样式
+   BEM: gc-tag
+   ======================================== */
+
+/* Block 基础样式 */
+.gc-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: var(--gc-font-xs);
+	font-weight: 500;
+	padding: 3px 8px;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	color: var(--text-normal);
+	flex-shrink: 0;
+	white-space: nowrap;
+	transition: all 0.15s ease;
+	cursor: default;
+	user-select: none;
+}
+
+/* Hover 状态 - 排除已选中状态 */
+.gc-tag:not(.gc-tag--selected):hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* 可选状态 */
+.gc-tag--selectable {
+	cursor: pointer;
+}
+
+.gc-tag--selectable:active {
+	transform: scale(0.96);
+}
+
+/* 选中状态 */
+.gc-tag--selected {
+	background: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.gc-tag--selected .gc-tag__label {
+	color: var(--text-on-accent);
+	font-weight: 600;
+}
+
+.gc-tag--selected .gc-tag__suffix {
+	background: rgba(255, 255, 255, 0.25);
+	color: var(--text-on-accent);
+	font-weight: 600;
+}
+
+.gc-tag--selected:hover {
+	background: var(--interactive-accent-hover);
+	border-color: var(--interactive-accent-hover);
+}
+
+/* Elements */
+.gc-tag__label {
+	line-height: 1.2;
+}
+
+.gc-tag__suffix {
+	font-size: var(--gc-font-xxs);
+	color: var(--text-muted);
+	background-color: var(--background-modifier-border);
+	padding: 1px 5px;
+	border-radius: 8px;
+	font-weight: 500;
+	line-height: 1;
+}
+
+/* 颜色变体（6种颜色，基于hash自动分配） */
+.gc-tag--color-0 {
+	background-color: rgba(56, 132, 255, 0.1);
+	border-color: rgba(56, 132, 255, 0.2);
+	color: #3884ff;
+}
+
+.gc-tag--color-1 {
+	background-color: rgba(34, 197, 94, 0.1);
+	border-color: rgba(34, 197, 94, 0.2);
+	color: #22c55e;
+}
+
+.gc-tag--color-2 {
+	background-color: rgba(249, 115, 22, 0.1);
+	border-color: rgba(249, 115, 22, 0.2);
+	color: #f97316;
+}
+
+.gc-tag--color-3 {
+	background-color: rgba(234, 179, 8, 0.1);
+	border-color: rgba(234, 179, 8, 0.2);
+	color: #eab308;
+}
+
+.gc-tag--color-4 {
+	background-color: rgba(168, 85, 247, 0.1);
+	border-color: rgba(168, 85, 247, 0.2);
+	color: #a855f7;
+}
+
+.gc-tag--color-5 {
+	background-color: rgba(236, 72, 153, 0.1);
+	border-color: rgba(236, 72, 153, 0.2);
+	color: #ec4899;
+}
+
+
