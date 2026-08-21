@@ -417,7 +417,7 @@ export function ToolbarBar(): JSX.Element {
 
 				<div className={ToolbarClasses.components.navButtons.group}>
 					<ToolbarBtn
-						icon="sync"
+						icon="cloud-download"
 						label={i18n.t('toolbar.syncButton.defaultTitle')}
 						onClick={() => {
 							void syncFeishuTasks(plugin as GanttCalendarPlugin);
