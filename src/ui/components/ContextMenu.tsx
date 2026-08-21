@@ -78,43 +78,44 @@ export function ContextMenuTrigger({
 			onContextMenu={handleContextMenu}
 		>
 			{children}
-			<AnimatePresence>
-				{state
-					? createPortal(
-							<motion.div
-								ref={menuRef}
-								className={ContextMenuClasses.container}
-								style={{ position: 'fixed', left: state.x, top: state.y }}
-								variants={panelVariants}
-								initial="initial"
-								animate="animate"
-								exit="exit"
-								transition={easeOutTransition(MOTION.dur.fast)}
-							>
-								{sections.map((section, si) => (
-									<div key={si} className={ContextMenuClasses.section}>
-										{section.items.map((item) => (
-											<button
-												key={item.key}
-												className={`${ContextMenuClasses.item}${item.disabled ? ` ${ContextMenuClasses.itemDisabled}` : ''}`}
-												disabled={item.disabled}
-												onClick={() => {
-													if (item.disabled) return;
-													close();
-													item.onClick?.();
-												}}
-											>
-												{item.icon ? <Icon icon={item.icon} className={ContextMenuClasses.itemIcon} /> : null}
-												<span className={ContextMenuClasses.itemLabel}>{item.title}</span>
-											</button>
-										))}
-									</div>
-								))}
-							</motion.div>,
-							document.body
-						)
-					: null}
-			</AnimatePresence>
+			{createPortal(
+				<AnimatePresence>
+					{state ? (
+						<motion.div
+							key="context-menu"
+							ref={menuRef}
+							className={ContextMenuClasses.container}
+							style={{ position: 'fixed', left: state.x, top: state.y }}
+							variants={panelVariants}
+							initial="initial"
+							animate="animate"
+							exit="exit"
+							transition={easeOutTransition(MOTION.dur.fast)}
+						>
+							{sections.map((section, si) => (
+								<div key={si} className={ContextMenuClasses.section}>
+									{section.items.map((item) => (
+										<button
+											key={item.key}
+											className={`${ContextMenuClasses.item}${item.disabled ? ` ${ContextMenuClasses.itemDisabled}` : ''}`}
+											disabled={item.disabled}
+											onClick={() => {
+												if (item.disabled) return;
+												close();
+												item.onClick?.();
+											}}
+										>
+											{item.icon ? <Icon icon={item.icon} className={ContextMenuClasses.itemIcon} /> : null}
+											<span className={ContextMenuClasses.itemLabel}>{item.title}</span>
+										</button>
+									))}
+								</div>
+							))}
+						</motion.div>
+					) : null}
+				</AnimatePresence>,
+				document.body
+			)}
 		</div>
 	);
 }

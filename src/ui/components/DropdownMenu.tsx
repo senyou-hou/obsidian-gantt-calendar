@@ -119,57 +119,58 @@ export function DropdownMenu({
 	return (
 		<div className={className}>
 			{children({ onClick: openMenu, 'aria-expanded': open })}
-			<AnimatePresence>
-				{open && anchorRect
-					? createPortal(
-							<motion.div
-								ref={menuRef}
-								className={DropdownMenuClasses.container}
-								style={style}
-								variants={panelVariants}
-								initial="initial"
-								animate="animate"
-								exit="exit"
-								transition={easeOutTransition(MOTION.dur.fast)}
-							>
-								{header ? <div className={DropdownMenuClasses.header}>{header}</div> : null}
-								{content ? (
-									content(closeMenu)
-								) : (
-									<>
-										{allItems.length === 0 ? (
-											<div className={DropdownMenuClasses.empty}>{'无选项'}</div>
-										) : (
-											sections.map((section, si) => (
-												<div key={si} className={DropdownMenuClasses.section}>
-													{section.items.map((item) => (
-														<button
-															key={item.key}
-															className={`${DropdownMenuClasses.item}${item.checked ? ` ${DropdownMenuClasses.itemChecked}` : ''}${item.disabled ? ` ${DropdownMenuClasses.itemDisabled}` : ''}`}
-															disabled={item.disabled}
-															onClick={() => {
-																if (item.disabled) return;
-																item.onClick?.();
-																if (!item.keepOpen) closeMenu();
-															}}
-														>
-															{item.icon ? <Icon icon={item.icon} className={DropdownMenuClasses.itemIcon} /> : null}
-															<span className={DropdownMenuClasses.itemLabel}>{item.title}</span>
-															{item.checked ? (
-																<Icon icon="check" className={DropdownMenuClasses.itemCheck} />
-															) : null}
-														</button>
-													))}
-												</div>
-											))
-										)}
-									</>
-								)}
-							</motion.div>,
-							document.body
-						)
-					: null}
-			</AnimatePresence>
+			{createPortal(
+				<AnimatePresence>
+					{open && anchorRect ? (
+						<motion.div
+							key="dropdown-menu"
+							ref={menuRef}
+							className={DropdownMenuClasses.container}
+							style={style}
+							variants={panelVariants}
+							initial="initial"
+							animate="animate"
+							exit="exit"
+							transition={easeOutTransition(MOTION.dur.fast)}
+						>
+							{header ? <div className={DropdownMenuClasses.header}>{header}</div> : null}
+							{content ? (
+								content(closeMenu)
+							) : (
+								<>
+									{allItems.length === 0 ? (
+										<div className={DropdownMenuClasses.empty}>{'无选项'}</div>
+									) : (
+										sections.map((section, si) => (
+											<div key={si} className={DropdownMenuClasses.section}>
+												{section.items.map((item) => (
+													<button
+														key={item.key}
+														className={`${DropdownMenuClasses.item}${item.checked ? ` ${DropdownMenuClasses.itemChecked}` : ''}${item.disabled ? ` ${DropdownMenuClasses.itemDisabled}` : ''}`}
+														disabled={item.disabled}
+														onClick={() => {
+															if (item.disabled) return;
+															item.onClick?.();
+															if (!item.keepOpen) closeMenu();
+														}}
+													>
+														{item.icon ? <Icon icon={item.icon} className={DropdownMenuClasses.itemIcon} /> : null}
+														<span className={DropdownMenuClasses.itemLabel}>{item.title}</span>
+														{item.checked ? (
+															<Icon icon="check" className={DropdownMenuClasses.itemCheck} />
+														) : null}
+													</button>
+												))}
+											</div>
+										))
+									)}
+								</>
+							)}
+						</motion.div>
+					) : null}
+				</AnimatePresence>,
+				document.body
+			)}
 		</div>
 	);
 }
