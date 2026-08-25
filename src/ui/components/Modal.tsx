@@ -65,7 +65,7 @@ export function Modal({
 						className={ModalClasses.panel}
 						style={width ? { width: `${width}px`, maxWidth: '90vw' } : undefined}
 						variants={modalVariants}
-						transition={easeOutTransition(MOTION.dur.slow)}
+						transition={easeOutTransition(MOTION.dur.normal)}
 					>
 						{title !== undefined ? (
 							<div className={ModalClasses.header}>

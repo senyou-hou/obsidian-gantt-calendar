@@ -3,6 +3,7 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -143,26 +144,43 @@ export function TaskTooltipTrigger({
 }
 
 function TooltipContent({ state, onClose }: { state: TooltipState; onClose: () => void }): JSX.Element {
-	const { task } = state;
+	const { task, anchor, x, y } = state;
+	const tooltipRef = useRef<HTMLDivElement | null>(null);
+	const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
-	const position = useMemo(() => {
-		const tooltipWidth = 300;
-		const tooltipHeight = 160;
-		let left = state.x + 15;
-		let top = state.y + 15;
-		if (left + tooltipWidth > window.innerWidth) left = state.x - tooltipWidth - 15;
-		if (left < 10) left = 10;
-		if (top + tooltipHeight > window.innerHeight) top = window.innerHeight - tooltipHeight - 10;
-		if (top < 10) top = 10;
-		return { left, top };
-	}, [state]);
+	// 实测尺寸后定位（useLayoutEffect 在绘制前执行，无闪烁）
+	useLayoutEffect(() => {
+		const el = tooltipRef.current;
+		if (!el) return;
+		const tooltipWidth = el.offsetWidth || 300;
+		const tooltipHeight = el.offsetHeight || 160;
+		const gap = 12;
+
+		const rect = anchor.getBoundingClientRect();
+
+		let left: number;
+		let top: number;
+		if (rect.width > 0 && rect.height > 0) {
+			left = rect.right + gap;
+			top = rect.top;
+		} else {
+			left = x + gap;
+			top = y + gap;
+		}
+		if (left + tooltipWidth > window.innerWidth) left = rect.left - tooltipWidth - gap;
+		left = Math.max(10, Math.min(left, window.innerWidth - tooltipWidth - 10));
+		top = Math.max(10, top);
+		if (top + tooltipHeight > window.innerHeight - 10) top = Math.max(10, window.innerHeight - tooltipHeight - 10);
+		setPosition({ left, top });
+	}, [state, anchor, x, y]);
 
 	const sections = useMemo(() => buildTooltipSections(task), [task]);
 
 	return createPortal(
 		<motion.div
+			ref={tooltipRef}
 			className={`${TooltipClasses.block} ${TooltipClasses.modifiers.visible}`}
-			style={{ left: `${position.left}px`, top: `${position.top}px` }}
+			style={{ left: `${position?.left ?? -9999}px`, top: `${position?.top ?? -9999}px` }}
 			variants={tooltipVariants}
 			initial="initial"
 			animate="animate"
