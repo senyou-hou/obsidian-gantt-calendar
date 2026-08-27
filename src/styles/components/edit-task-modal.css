@@ -1,0 +1,271 @@
+/* 任务创建/编辑弹窗样式（原 TaskFormModal 内动态注入的 MODAL_STYLES，
+   按官方规范迁移到 styles.css，由 Obsidian 统一加载） */
+	.gc-edit-task-modal {
+		width: 100%;
+	}
+	.gc-edit-task-modal__scroll-container {
+		max-height: 65vh;
+		overflow-y: auto;
+		overflow-x: hidden;
+		margin-right: -12px;
+		padding-right: 12px;
+	}
+	.gc-edit-task-modal__scroll-container::-webkit-scrollbar {
+		width: 12px;
+	}
+	.gc-edit-task-modal__scroll-container::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.gc-edit-task-modal__scroll-container::-webkit-scrollbar-thumb {
+		background: var(--background-modifier-border);
+		border-radius: 6px;
+		border: 2px solid transparent;
+		background-clip: content-box;
+	}
+	.gc-edit-task-modal__title {
+		font-size: var(--font-ui-medium);
+		font-weight: 600;
+		margin-bottom: 12px;
+		color: var(--text-normal);
+	}
+	.gc-edit-task-modal__section {
+		margin-bottom: 20px;
+	}
+	.gc-edit-task-modal__section-label {
+		display: block;
+		font-weight: 600;
+		margin-bottom: 8px;
+		font-size: var(--font-ui-small);
+		color: var(--text-normal);
+	}
+	.gc-edit-task-modal__section-hint {
+		font-size: var(--font-ui-smaller);
+		color: var(--text-muted);
+		margin-bottom: 8px;
+	}
+	.gc-edit-task-modal__desc-textarea {
+		width: 100%;
+		min-height: 60px;
+		max-height: 60px;
+		padding: 8px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: 4px;
+		background: var(--background-secondary);
+		color: var(--text-normal);
+		resize: none;
+		overflow: auto;
+		font-family: var(--font-interface);
+		font-size: var(--font-ui-small);
+	}
+	.gc-edit-task-modal__desc-textarea:focus {
+		border-color: var(--interactive-accent);
+	}
+	.gc-edit-task-modal__priority-grid {
+		display: grid;
+		grid-template-columns: repeat(6, 1fr);
+		gap: 6px;
+		margin-top: 8px;
+	}
+	.gc-edit-task-modal__priority-btn {
+		padding: 4px 2px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: 4px;
+		background: var(--background-secondary);
+		color: var(--text-normal);
+		cursor: pointer;
+		font-size: 11px;
+		transition: all 0.15s ease;
+		white-space: nowrap;
+		text-align: center;
+	}
+	.gc-edit-task-modal__priority-btn:hover {
+		background: var(--background-modifier-hover);
+	}
+	.gc-edit-task-modal__priority-btn-selected {
+		background: var(--background-modifier-hover) !important;
+		color: var(--text-normal) !important;
+		border-color: transparent !important;
+		border-left: 3px solid var(--interactive-accent) !important;
+	}
+	.gc-edit-task-modal__dates-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 10px;
+	}
+	.gc-edit-task-modal__date-item {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.gc-edit-task-modal__date-label {
+		font-size: var(--font-ui-smaller);
+		color: var(--text-muted);
+		font-weight: 500;
+	}
+	.gc-edit-task-modal__date-input-container {
+		display: flex;
+		gap: 4px;
+		align-items: center;
+	}
+	.gc-edit-task-modal__date-input {
+		width: auto;
+		padding: 4px 6px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: 4px;
+		background: var(--background-secondary);
+		color: var(--text-normal);
+		font-size: var(--font-ui-smaller);
+		cursor: pointer;
+	}
+	.gc-edit-task-modal__date-clear {
+		width: 22px;
+		height: 22px;
+		padding: 0;
+		border: none;
+		border-radius: 50%;
+		background: transparent;
+		color: var(--text-faint);
+		cursor: pointer;
+		font-size: 11px;
+		line-height: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		opacity: 0.6;
+		transition: opacity 0.15s;
+	}
+	.gc-edit-task-modal__date-clear:hover {
+		background: var(--background-modifier-hover);
+		color: var(--text-normal);
+	}
+	.flatpickr-calendar {
+		background: var(--background-primary) !important;
+		border: 1px solid var(--background-modifier-border) !important;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+		border-radius: 6px !important;
+		z-index: 99999 !important;
+	}
+	.flatpickr-day {
+		color: var(--text-normal) !important;
+		border-radius: 4px !important;
+	}
+	.flatpickr-day:hover {
+		background: var(--background-modifier-hover) !important;
+		border-color: var(--background-modifier-hover) !important;
+	}
+	.flatpickr-day.selected,
+	.flatpickr-day.selected:hover {
+		background: var(--interactive-accent) !important;
+		border-color: var(--interactive-accent) !important;
+		color: var(--text-on-accent) !important;
+	}
+	.flatpickr-day.today {
+		border-color: var(--interactive-accent) !important;
+	}
+	.flatpickr-months .flatpickr-month {
+		color: var(--text-normal) !important;
+		fill: var(--text-normal) !important;
+	}
+	.flatpickr-current-month .flatpickr-monthDropdown-months {
+		background: var(--background-secondary) !important;
+		color: var(--text-normal) !important;
+	}
+	.flatpickr-weekday {
+		color: var(--text-muted) !important;
+	}
+	.flatpickr-months .flatpickr-prev-month,
+	.flatpickr-months .flatpickr-next-month {
+		color: var(--text-muted) !important;
+		fill: var(--text-faint) !important;
+	}
+	.flatpickr-time input {
+		color: var(--text-normal) !important;
+		background: var(--background-secondary) !important;
+	}
+	.flatpickr-time .flatpickr-time-separator,
+	.flatpickr-time .flatpickr-am-pm {
+		color: var(--text-normal) !important;
+	}
+	.flatpickr-time .numInputWrapper span.arrowUp::after {
+		border-bottom-color: var(--text-muted) !important;
+	}
+	.flatpickr-time .numInputWrapper span.arrowDown::after {
+		border-top-color: var(--text-muted) !important;
+	}
+	.gc-edit-task-modal__tags-section {
+		margin-top: 8px;
+	}
+	.gc-tag-selector-label {
+		display: block;
+		font-weight: 600;
+		margin-bottom: 8px;
+		font-size: var(--font-ui-small);
+		color: var(--text-normal);
+	}
+	.gc-tag-selector-recommended-section,
+	.gc-tag-selector-selected-section {
+		margin-bottom: 12px;
+	}
+	.gc-tag-selector-grid {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-top: 6px;
+	}
+	.gc-tag-selector-new-section {
+		display: flex;
+		gap: 6px;
+		margin-top: 8px;
+	}
+	.gc-tag-selector-new-input {
+		flex: 1;
+		padding: 6px 10px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: 4px;
+		background: var(--background-secondary);
+		color: var(--text-normal);
+		font-size: var(--font-ui-small);
+	}
+	.gc-tag-selector-new-input:focus {
+		outline: 2px solid var(--interactive-accent);
+		border-color: var(--interactive-accent);
+	}
+	.gc-tag-selector-new-button {
+		padding: 6px 12px;
+		border: 1px solid var(--background-modifier-border);
+		border-radius: 4px;
+		background: var(--background-secondary);
+		color: var(--text-normal);
+		cursor: pointer;
+		font-size: var(--font-ui-small);
+	}
+	.gc-tag-selector-new-button:hover {
+		background: var(--background-modifier-hover);
+	}
+	.gc-edit-task-modal__buttons {
+		display: flex;
+		gap: 8px;
+		justify-content: flex-end;
+		margin-top: 20px;
+	}
+	.gc-edit-task-modal__buttons button {
+		padding: 8px 16px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		font-size: var(--font-ui-small);
+	}
+	.gc-edit-task-modal__buttons button:hover {
+		background: var(--background-modifier-hover);
+	}
+	.gc-edit-task-modal__buttons button.mod-cta {
+		background: var(--interactive-accent);
+		color: var(--text-on-accent);
+		border-color: var(--interactive-accent);
+	}
+	.gc-edit-task-modal__buttons button.mod-cta:hover {
+		background: var(--interactive-accent-hover);
+	}

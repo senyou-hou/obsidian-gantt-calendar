@@ -71,7 +71,7 @@ export class TaskStatusCard {
 		const cls = SettingsStatusCardClasses.elements;
 		const section = parent.createDiv(cls.themeSection);
 
-		section.createEl('span', {
+		section.createSpan({
 			text: themeMode === 'light' ? i18n.t('settings.taskStatus.colors.lightTheme') : i18n.t('settings.taskStatus.colors.darkTheme'),
 			cls: cls.themeLabel,
 		});
@@ -99,7 +99,7 @@ export class TaskStatusCard {
 		const field = parent.createDiv(cls.colorField);
 
 		const labelRow = field.createDiv(cls.colorLabel);
-		labelRow.createEl('span', { text: label, cls: cls.colorLabelText });
+		labelRow.createSpan({ text: label, cls: cls.colorLabelText });
 
 		const swatchWrapper = labelRow.createDiv(cls.swatchWrapper);
 		const hiddenInput = swatchWrapper.createEl('input', {

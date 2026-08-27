@@ -1,4 +1,4 @@
-import { useMemo, useRef, type CSSProperties, type JSX } from 'react';
+import { useMemo, type CSSProperties, type JSX } from 'react';
 import type { GCTask } from '../../types';
 import type { TaskCardConfig } from '../../components/TaskCard/TaskCardConfig';
 import { TaskCardClasses, TimeBadgeClasses } from '../../utils/bem';

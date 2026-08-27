@@ -852,7 +852,7 @@ export class SvgGanttRenderer {
 			numberForeignObj.setAttribute('width', String(numberWidth));
 			numberForeignObj.setAttribute('height', String(this.rowHeight));
 
-			const numberDiv = activeDocument.createElement('div');
+			const numberDiv = createDiv();
 			numberDiv.className = GanttClasses.elements.taskNumberCell;
 			numberDiv.addClass('gc-u-flex', 'gc-u-items-center', 'gc-u-text-muted', 'gc-u-font-medium');
 			setCssProps(numberDiv, { justifyContent: 'center', height: '100%', fontSize: '11px' });
@@ -868,7 +868,7 @@ export class SvgGanttRenderer {
 			contentForeignObj.setAttribute('height', String(this.rowHeight));
 
 			// 创建 HTML 内容容器
-			const contentDiv = activeDocument.createElement('div');
+			const contentDiv = createDiv();
 			contentDiv.className = GanttClasses.elements.taskContentCell;
 			contentDiv.addClass('gc-u-flex', 'gc-u-items-center', 'gc-u-w-full');
 			setCssProps(contentDiv, { height: '100%', fontSize: '12px', color: 'var(--text-normal)', gap: '8px', padding: '0 8px' });
@@ -878,7 +878,7 @@ export class SvgGanttRenderer {
 			contentDiv.appendChild(checkbox);
 
 			// === 创建可点击的文本容器 ===
-			const textContainer = activeDocument.createElement('div');
+			const textContainer = createDiv();
 			textContainer.className = 'gantt-task-list-item__text';
 			textContainer.addClass('gc-u-whitespace-nowrap', 'gc-u-pointer');
 			setCssProps(textContainer, { flex: '1' });
@@ -944,7 +944,7 @@ export class SvgGanttRenderer {
 		ganttTask: GanttChartTask,
 		isCompleted: boolean
 	): HTMLInputElement {
-		const checkbox = activeDocument.createElement('input');
+		const checkbox = createEl('input');
 		checkbox.type = 'checkbox';
 		checkbox.checked = isCompleted;
 		checkbox.className = GanttClasses.elements.taskCheckbox;
@@ -2065,7 +2065,7 @@ export class SvgGanttRenderer {
 	 */
 	private applyLeadBar(barGroup: SVGGElement, leadStart: string | undefined, barX: number, y: number): void {
 		if (!this.minDate) return;
-		const leadBar = barGroup.querySelector('.gc-gantt-view__lead-bar') as SVGRectElement | null;
+		const leadBar = barGroup.querySelector('.gc-gantt-view__lead-bar');
 
 		if (!leadStart) {
 			leadBar?.remove();
@@ -2083,7 +2083,7 @@ export class SvgGanttRenderer {
 
 		let target = leadBar;
 		if (!target) {
-			target = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'rect') as SVGRectElement;
+			target = createSvg('rect');
 			target.setAttribute('height', '24');
 			target.setAttribute('rx', '4');
 			target.classList.add('gc-gantt-view__lead-bar');

@@ -129,7 +129,7 @@ export async function syncFeishuTasks(plugin: GanttCalendarPlugin, options?: { i
 			onProgress: (msg: string) => {
 				const container = progressNotice.messageEl;
 				container.empty();
-				container.createEl('span', { text: msg });
+				container.createSpan({ text: msg });
 				if (!stopBtn.disabled && !controller.signal.aborted) {
 					const btn = container.createEl('button', { text: i18n.t('commands.sync.stopSync') });
 					btn.setCssStyles({ marginLeft: '12px', padding: '2px 10px', cursor: 'pointer' });
