@@ -1,4 +1,5 @@
 import { useCallback, useMemo, type JSX } from 'react';
+import { taskKey } from '../utils/taskKey';
 import type { GCTask } from '../../types';
 import { getTaskDateField } from '../../types';
 import { TaskViewConfig } from '../../components/TaskCard';
@@ -89,9 +90,6 @@ export function TaskView(): JSX.Element {
 	);
 }
 
-function taskKey(t: GCTask): string {
-	return `${t.filePath}:${t.lineNumber}`;
-}
 
 function startOfDay(d: Date): Date {
 	const x = new Date(d);

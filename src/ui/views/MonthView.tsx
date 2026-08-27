@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useCallback, type JSX } from 'react';
+import { taskKey } from '../utils/taskKey';
 import type { DragEvent as ReactDragEvent } from 'react';
 import { Notice } from 'obsidian';
 import { generateMonthCalendar } from '../../calendar/calendarGenerator';
@@ -222,7 +223,7 @@ export function MonthView(): JSX.Element {
 										))}
 										{hasMore ? (
 											<div className={MonthViewClasses.elements.taskMore}>
-												+{dayTasks.length - taskLimit} more
+												{i18n.t('common.more', { count: dayTasks.length - taskLimit })}
 											</div>
 										) : null}
 									</div>
@@ -244,6 +245,3 @@ function festivalClass(type: 'solar' | 'lunar' | 'solarTerm'): string {
 	}
 }
 
-function taskKey(t: GCTask): string {
-	return `${t.filePath}:${t.lineNumber}`;
-}

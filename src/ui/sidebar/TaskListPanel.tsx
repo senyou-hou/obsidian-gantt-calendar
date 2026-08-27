@@ -23,7 +23,9 @@ type DateFilter = 'all' | 'today' | 'week' | 'month';
 type SortField = 'priority' | 'dueDate' | 'startDate';
 type SortOrder = 'asc' | 'desc';
 
-const PRIORITIES: Array<{ key: PriorityFilter; label: string }> = [
+// 文案在模块加载时求值会固化（i18n 尚未初始化或语言已切换）——改为调用时求值
+function getPriorities(): Array<{ key: PriorityFilter; label: string }> {
+	return [
 	{ key: 'all', label: i18n.t('sidebar.taskList.priority.all') },
 	{ key: 'highest', label: i18n.t('sidebar.taskList.priority.highest') },
 	{ key: 'high', label: i18n.t('sidebar.taskList.priority.high') },
@@ -31,20 +33,25 @@ const PRIORITIES: Array<{ key: PriorityFilter; label: string }> = [
 	{ key: 'normal', label: i18n.t('sidebar.taskList.priority.normal') },
 	{ key: 'low', label: i18n.t('sidebar.taskList.priority.low') },
 	{ key: 'lowest', label: i18n.t('sidebar.taskList.priority.lowest') },
-];
+	];
+}
 
-const SORT_OPTIONS: Array<{ key: SortField; label: string }> = [
+function getSortOptions(): Array<{ key: SortField; label: string }> {
+	return [
 	{ key: 'priority', label: i18n.t('sidebar.taskList.sortOptions.byPriority') },
 	{ key: 'dueDate', label: i18n.t('sidebar.taskList.sortOptions.byDueDate') },
 	{ key: 'startDate', label: i18n.t('sidebar.taskList.sortOptions.byStartDate') },
-];
+	];
+}
 
-const DATE_OPTIONS: Array<{ key: DateFilter; label: string; icon: string }> = [
+function getDateOptions(): Array<{ key: DateFilter; label: string; icon: string }> {
+	return [
 	{ key: 'all', label: i18n.t('sidebar.taskList.dateFilterOptions.all'), icon: 'infinity' },
 	{ key: 'today', label: i18n.t('sidebar.taskList.dateFilterOptions.today'), icon: 'sun' },
 	{ key: 'week', label: i18n.t('sidebar.taskList.dateFilterOptions.thisWeek'), icon: 'calendar-range' },
 	{ key: 'month', label: i18n.t('sidebar.taskList.dateFilterOptions.thisMonth'), icon: 'calendar-days' },
-];
+	];
+}
 
 function inferStatus(task: GCTask): string {
 	if (task.status) return task.status;
@@ -219,7 +226,7 @@ export function TaskListPanel(): JSX.Element {
 
 	// 优先级筛选菜单
 	const prioritySections: DropdownMenuSection[] = useMemo(() => [{
-		items: PRIORITIES.map((p) => ({
+		items: getPriorities().map((p) => ({
 			key: `priority-${p.key}`,
 			title: p.label,
 			icon: p.key === 'all' ? undefined : 'flame',
@@ -230,7 +237,7 @@ export function TaskListPanel(): JSX.Element {
 
 	// 排序菜单（点击同项切换升降序）
 	const sortSections: DropdownMenuSection[] = useMemo(() => [{
-		items: SORT_OPTIONS.map((opt) => ({
+		items: getSortOptions().map((opt) => ({
 			key: `sort-${opt.key}`,
 			title: opt.label,
 			icon: sortBy === opt.key
@@ -250,7 +257,7 @@ export function TaskListPanel(): JSX.Element {
 
 	// 日期筛选菜单
 	const dateSections: DropdownMenuSection[] = useMemo(() => [{
-		items: DATE_OPTIONS.map((opt) => ({
+		items: getDateOptions().map((opt) => ({
 			key: `date-${opt.key}`,
 			title: opt.label,
 			icon: opt.icon,

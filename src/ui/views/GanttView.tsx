@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { isChineseLanguage } from '../../i18n/i18n';
 import { Notice } from 'obsidian';
 import { sortTasks } from '../../tasks/taskSorter';
 import { GanttClasses, ViewClasses } from '../../utils/bem';
@@ -18,7 +19,7 @@ import { useCalendarStore, selectViewFilter } from '../store/calendarStore';
 const GANTT_CONFIG: Omit<GanttChartConfig, 'on_click' | 'on_date_change' | 'on_progress_change'> = {
 	view_mode: 'week',
 	granularity: TimeGranularity.WEEK,
-	language: 'zh',
+	language: isChineseLanguage() ? 'zh' : 'en',
 	header_height: 50,
 	column_width: 40,
 	step: 24,

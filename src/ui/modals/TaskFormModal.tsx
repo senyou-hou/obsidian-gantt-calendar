@@ -42,29 +42,35 @@ export interface TaskFormModalProps {
 	onClose: () => void;
 }
 
-const PRIORITY_OPTIONS: PriorityOption[] = [
-	{ value: 'highest', label: i18n.t('common.priority.highest'), icon: '🔺' },
-	{ value: 'high', label: i18n.t('common.priority.high'), icon: '⏫' },
-	{ value: 'medium', label: i18n.t('common.priority.medium'), icon: '🔼' },
-	{ value: 'normal', label: i18n.t('common.priority.normal'), icon: '◽' },
-	{ value: 'low', label: i18n.t('common.priority.low'), icon: '🔽' },
-	{ value: 'lowest', label: i18n.t('common.priority.lowest'), icon: '⏬' },
-];
+// 模块级常量会在 import 时固化 i18n 文案，语言切换后不生效——
+// 改为组件内按当前语言求值
+function getPriorityOptions(): PriorityOption[] {
+	return [
+		{ value: 'highest', label: i18n.t('common.priority.highest'), icon: '🔺' },
+		{ value: 'high', label: i18n.t('common.priority.high'), icon: '⏫' },
+		{ value: 'medium', label: i18n.t('common.priority.medium'), icon: '🔼' },
+		{ value: 'normal', label: i18n.t('common.priority.normal'), icon: '◽' },
+		{ value: 'low', label: i18n.t('common.priority.low'), icon: '🔽' },
+		{ value: 'lowest', label: i18n.t('common.priority.lowest'), icon: '⏬' },
+	];
+}
+
+function getDateFields(): DateFieldDef[] {
+	return [
+		{ key: 'createdDate', label: i18n.t('modals.createTask.dateFields.created') },
+		{ key: 'startDate', label: i18n.t('modals.createTask.dateFields.start') },
+		{ key: 'scheduledDate', label: i18n.t('modals.createTask.dateFields.scheduled') },
+		{ key: 'dueDate', label: i18n.t('modals.createTask.dateFields.due') },
+		{ key: 'completionDate', label: i18n.t('modals.createTask.dateFields.completion') },
+		{ key: 'cancelledDate', label: i18n.t('modals.createTask.dateFields.cancelled') },
+	];
+}
 
 /** 日期字段定义 */
 interface DateFieldDef {
 	key: string;
 	label: string;
 }
-
-const DATE_FIELDS: DateFieldDef[] = [
-	{ key: 'createdDate', label: i18n.t('modals.createTask.dateFields.created') },
-	{ key: 'startDate', label: i18n.t('modals.createTask.dateFields.start') },
-	{ key: 'scheduledDate', label: i18n.t('modals.createTask.dateFields.scheduled') },
-	{ key: 'dueDate', label: i18n.t('modals.createTask.dateFields.due') },
-	{ key: 'completionDate', label: i18n.t('modals.createTask.dateFields.completion') },
-	{ key: 'cancelledDate', label: i18n.t('modals.createTask.dateFields.cancelled') },
-];
 
 /** 弹窗内联样式（原 BaseTaskModal.addStyles 的内容） */
 
@@ -87,6 +93,8 @@ export function TaskFormModal({
 	onClose,
 }: TaskFormModalProps): JSX.Element {
 	const [open, setOpen] = useState(true);
+	const priorityOptions = useMemo(getPriorityOptions, []);
+	const dateFields = useMemo(getDateFields, []);
 
 	// ========== 表单状态 ==========
 	const [priority, setPriority] = useState<PriorityOption['value']>(
@@ -282,7 +290,7 @@ export function TaskFormModal({
 								{i18n.t('modals.editTask.priorityLabel')}
 							</label>
 							<div className={EditTaskModalClasses.elements.priorityGrid}>
-								{PRIORITY_OPTIONS.map(option => (
+								{priorityOptions.map(option => (
 									<button
 										key={option.value}
 										className={[
@@ -309,7 +317,7 @@ export function TaskFormModal({
 								{i18n.t('modals.editTask.datesLabel')}
 							</label>
 							<div className={EditTaskModalClasses.elements.datesGrid}>
-								{DATE_FIELDS.map(field => (
+								{dateFields.map(field => (
 									<DateField
 										key={field.key}
 										label={field.label}

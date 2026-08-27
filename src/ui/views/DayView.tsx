@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { taskKey } from '../utils/taskKey';
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { Notice } from 'obsidian';
 import type { Component } from 'obsidian';
@@ -102,7 +103,7 @@ export function DayView(): JSX.Element {
 	const timeGridRef = useRef<HTMLDivElement | null>(null);
 	const [currentLineTop, setCurrentLineTop] = useState<number | null>(null);
 
-	useLayoutEffect(() => {
+	const updateCurrentLine = useCallback(() => {
 		if (!dayTasks.hasTimed || !isTodayInTimezone(normalized)) {
 			setCurrentLineTop(null);
 			return;
@@ -121,6 +122,14 @@ export function DayView(): JSX.Element {
 		const minuteOffset = (new Date().getMinutes() / 60) * slotHeight;
 		setCurrentLineTop(slotTop + minuteOffset);
 	}, [dayTasks.hasTimed, normalized]);
+
+	useLayoutEffect(updateCurrentLine, [updateCurrentLine]);
+
+	// 每 30s 重算一次当前时间线，否则挂机数小时后位置严重滞后
+	useEffect(() => {
+		const timer = window.setInterval(updateCurrentLine, 30_000);
+		return () => window.clearInterval(timer);
+	}, [updateCurrentLine]);
 
 	// ===== 时间格拖放 =====
 	const handleHourDrop = useCallback((taskId: string, hour: number) => {
@@ -228,7 +237,7 @@ export function DayView(): JSX.Element {
 				const fileName = filePath
 					? (filePath.split('/').pop() ?? '').replace(RegularExpressions.markdownFileExtensionRegex, '')
 					: '';
-				notesTitleRef.current.textContent = fileName || 'Daily note';
+				notesTitleRef.current.textContent = fileName || i18n.t('common.dailyNote');
 			}
 			setEditorMode(editor.getMode());
 		})();
@@ -357,7 +366,7 @@ export function DayView(): JSX.Element {
 				/>
 				<div ref={notesSectionRef} className={DayViewClasses.elements.sectionNotes}>
 					<div className={DayViewClasses.elements.notesHeader}>
-						<h3 ref={notesTitleRef} className={DayViewClasses.elements.title}>Daily note</h3>
+						<h3 ref={notesTitleRef} className={DayViewClasses.elements.title}>{i18n.t('common.dailyNote')}</h3>
 						<button
 							ref={modeToggleRef}
 							className={EmbeddedEditorClasses.elements.modeToggle}
@@ -374,6 +383,3 @@ export function DayView(): JSX.Element {
 	);
 }
 
-function taskKey(t: GCTask): string {
-	return `${t.filePath}:${t.lineNumber}`;
-}

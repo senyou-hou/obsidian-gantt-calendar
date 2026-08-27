@@ -295,7 +295,7 @@ export const TaskCard = memo(function TaskCard({ task, config, targetDate, onCli
 			{task.metadataFields.map((f, idx) => (
 				<div key={idx} className={TaskCardClasses.elements.metadataItem}>
 					<span className={TaskCardClasses.elements.metadataKey}>{f.key}:</span>
-					<span className={TaskCardClasses.elements.metadataValue}>{f.value || '(空)'}</span>
+					<span className={TaskCardClasses.elements.metadataValue}>{f.value || i18n.t('common.empty')}</span>
 				</div>
 			))}
 		</div>

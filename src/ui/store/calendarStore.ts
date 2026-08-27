@@ -82,7 +82,13 @@ export const useCalendarStore = create<CalendarStoreState>((set) => ({
 	setViewType: (type) => set({ viewType: type }),
 	setCurrentDate: (date) => set({ currentDate: new Date(date) }),
 	notifyTasksUpdated: (tasks, filePath) =>
-		set((s) => ({ tasks, changedFilePath: filePath, updateSeq: s.updateSeq + 1 })),
+		set((s) => {
+			// 同一次 TaskStore 防抖冲刷会被主视图和侧栏两个订阅者各转发一次，
+			// 第二次传入的数组引用相同（L1 缓存）——直接跳过，
+			// 避免 updateSeq 重复自增引发二次重渲染
+			if (tasks === s.tasks && filePath === s.changedFilePath) return s;
+			return { tasks, changedFilePath: filePath, updateSeq: s.updateSeq + 1 };
+		}),
 	setTasks: (tasks) => set({ tasks }),
 	bumpSettings: () => set((s) => ({ settingsVersion: s.settingsVersion + 1 })),
 	requestGanttScroll: (action) =>

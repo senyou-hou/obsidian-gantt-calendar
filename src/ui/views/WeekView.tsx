@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { taskKey } from '../utils/taskKey';
 import type { DragEvent as ReactDragEvent } from 'react';
 import { Notice } from 'obsidian';
 import { getWeekOfDate } from '../../dateUtils/dateUtilsIndex';
@@ -187,6 +188,18 @@ export function WeekView(): JSX.Element {
 		grid.querySelector(`.${WeekViewClasses.elements.currentTimeLine}`)?.remove();
 		renderCurrentTimeLine(grid, `.${WeekViewClasses.elements.timeSlot}`, WeekViewClasses.elements.currentTimeLine);
 	}, [useTimeline, updateSeq, hasTodayInWeek, weekStart]);
+
+	// 每 30s 重画一次当前时间线，否则挂机数小时后红线位置严重滞后
+	useEffect(() => {
+		if (!useTimeline || !hasTodayInWeek) return;
+		const timer = window.setInterval(() => {
+			const grid = gridRef.current;
+			if (!grid) return;
+			grid.querySelector(`.${WeekViewClasses.elements.currentTimeLine}`)?.remove();
+			renderCurrentTimeLine(grid, `.${WeekViewClasses.elements.timeSlot}`, WeekViewClasses.elements.currentTimeLine);
+		}, 30_000);
+		return () => window.clearInterval(timer);
+	}, [useTimeline, hasTodayInWeek, weekStart]);
 
 	// ===== 解析拖拽任务 =====
 	const parseDropTask = useCallback((e: ReactDragEvent): GCTask | null => {
@@ -482,9 +495,6 @@ export function WeekView(): JSX.Element {
 	);
 }
 
-function taskKey(t: GCTask): string {
-	return `${t.filePath}:${t.lineNumber}`;
-}
 
 /**
  * 空时间格 "+" 快速创建按钮（点击创建带目标日期与小时的任务）

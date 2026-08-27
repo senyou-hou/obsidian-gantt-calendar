@@ -23,7 +23,8 @@ const VIEW_BUTTONS: Array<{ type: CalendarViewType; icon: string }> = [
 	{ type: 'gantt', icon: 'chart-gantt' },
 ];
 
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// 月缩写走 i18n（模块级常量会在语言切换后固化旧语言）
+const MONTH_ABBR = () => i18n.t('common.monthsAbbr') as unknown as string[];
 
 /**
  * React 工具栏
@@ -51,7 +52,7 @@ export function ToolbarBar(): JSX.Element {
 	const titleText = useMemo(() => {
 		switch (viewType) {
 			case 'year': return String(currentDate.getFullYear());
-			case 'month': return MONTH_ABBR[currentDate.getMonth()];
+			case 'month': return MONTH_ABBR()[currentDate.getMonth()];
 			case 'week': {
 				const week = getWeekOfDate(currentDate, undefined, startOnMonday);
 				return `W${week.weekNumber}(${formatDate(week.startDate, 'MM/dd')}-${formatDate(week.endDate, 'MM/dd')})`;
