@@ -463,3 +463,9 @@
 	background-color: var(--background-modifier-hover);
 }
 
+/* Lead-in segment (creation -> start): muted color, clearly distinct from the main bar */
+.gc-gantt-view__lead-bar {
+	fill: var(--text-muted);
+	opacity: 0.35;
+	pointer-events: none;
+}

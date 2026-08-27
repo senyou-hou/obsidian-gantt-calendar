@@ -18,36 +18,61 @@ export class TaskDataAdapter {
 	 * @param task - 原始任务对象
 	 * @param startField - 开始时间字段
 	 * @param endField - 结束时间字段
-	 * @param index - 任务索引（用于生成唯一ID）
 	 * @returns 甘特图任务对象，如果缺少必要字段则返回 null
 	 */
 	static toGanttChartTask(
 		task: GCTask,
 		startField: DateFieldType,
 		endField: DateFieldType,
-		index: number
+		id?: string
 	): GanttChartTask | null {
-		const startDate = getTaskDateField(task, startField);
 		const endDate = getTaskDateField(task, endField);
 
-		// 验证必要字段
-		if (!startDate || !endDate) {
+		// End field is always required.
+		if (!endDate || isNaN(endDate.getTime())) {
 			return null;
 		}
 
-		// 验证日期有效性
-		if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+		// Start resolution: the configured field first, then the two supported
+		// fallbacks. createdDate and startDate are both valid Gantt start points,
+		// so a task is renderable when ANY candidate exists plus the end field.
+		const startCandidates: DateFieldType[] = startField === 'createdDate'
+			? [startField, 'startDate']
+			: startField === 'startDate'
+				? [startField, 'createdDate']
+				: [startField, 'createdDate', 'startDate'];
+
+		let startDate: Date | undefined;
+		let startSourceField: DateFieldType = startField;
+		for (const candidate of startCandidates) {
+			const value = getTaskDateField(task, candidate);
+			if (value && !isNaN(value.getTime())) {
+				startDate = value;
+				startSourceField = candidate;
+				break;
+			}
+		}
+		if (!startDate) {
 			return null;
 		}
 
 		// 确保结束日期不早于开始日期
 		const normalizedEndDate = endDate < startDate ? startDate : endDate;
 
+		// Lead-in segment: creation → effective start, drawn in a distinct
+		// muted color when both dates exist and creation precedes the start.
+		const createdDate = task.createdDate;
+		const leadStart = (createdDate && !isNaN(createdDate.getTime()) && createdDate < startDate)
+			? this.formatDate(createdDate)
+			: undefined;
+
 		return {
-			id: this.generateTaskId(task, index),
+			id: id ?? this.generateTaskId(task),
 			name: task.description || '无标题任务',
 			start: this.formatDate(startDate),
 			end: this.formatDate(normalizedEndDate),
+			leadStart,
+			startSourceField,
 			progress: this.calculateProgress(task),
 			custom_class: this.getCustomClass(task),
 
@@ -72,6 +97,7 @@ export class TaskDataAdapter {
 			cancelledDate: task.cancelledDate,
 			completionDate: task.completionDate,
 			repeat: task.repeat,
+			datePrecision: task.datePrecision,
 			metadataFields: task.metadataFields,
 		};
 	}
@@ -89,24 +115,51 @@ export class TaskDataAdapter {
 		startField: DateFieldType,
 		endField: DateFieldType
 	): GanttChartTask[] {
-		return tasks
-			.map((task, index) => this.toGanttChartTask(task, startField, endField, index))
-			.filter((t): t is GanttChartTask => t !== null);
+		// Uniqueness must be decided over tasks that pass field validation, so convert first,
+		// then append an occurrence suffix only when a duplicate id appears (e.g. recurring
+		// virtual instances). Regular tasks keep a fully stable id across inserts/sorts.
+		const results: GanttChartTask[] = [];
+		const seenIds = new Map<string, number>();
+		for (const task of tasks) {
+			const converted = this.toGanttChartTask(task, startField, endField);
+			if (!converted) continue;
+
+			const occurrence = (seenIds.get(converted.id) ?? 0) + 1;
+			seenIds.set(converted.id, occurrence);
+			if (occurrence > 1) {
+				converted.id = `${converted.id}#${occurrence}`;
+			}
+			results.push(converted);
+		}
+		return results;
 	}
 
 	/**
 	 * 生成唯一任务ID
 	 *
-	 * 格式: `{fileName}-{lineNumber}-{index}`
+	 * 格式: `{fileName}-{lineNumber}-{pathHash}`
 	 *
 	 * @param task - 原始任务对象
-	 * @param index - 任务索引
 	 * @returns 唯一任务ID
 	 */
-	private static generateTaskId(task: GCTask, index: number): string {
+	private static generateTaskId(task: GCTask): string {
 		// 移除文件扩展名并替换特殊字符
 		const sanitizedName = task.fileName.replace(/\.md$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
-		return `${sanitizedName}-${task.lineNumber}-${index}`;
+		// Same-named files in different folders are disambiguated by a short path hash
+		const pathHash = this.hashString(task.filePath);
+		return `${sanitizedName}-${task.lineNumber}-${pathHash}`;
+	}
+
+	/**
+	 * Deterministic string hash (djb2 variant, base36 output).
+	 * Only used to build a short stable path fingerprint; not cryptographic.
+	 */
+	private static hashString(input: string): string {
+		let hash = 5381;
+		for (let i = 0; i < input.length; i++) {
+			hash = ((hash << 5) + hash + input.charCodeAt(i)) | 0;
+		}
+		return (hash >>> 0).toString(36);
 	}
 
 	/**

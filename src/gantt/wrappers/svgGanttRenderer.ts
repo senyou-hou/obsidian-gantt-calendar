@@ -80,6 +80,10 @@ export class SvgGanttRenderer {
 
 	// 拖动状态
 	private isResizing = false;
+	// Document-level resize listeners are kept as fields so destroy() can
+	// always detach them (anonymous listeners would leak per engine rebuild).
+	private resizeMoveHandler: ((e: MouseEvent) => void) | null = null;
+	private resizeEndHandler: ((e: MouseEvent) => void) | null = null;
 
 	// 行背景元素引用（用于鼠标悬停高亮）
 	private rowBgElements = {
@@ -202,6 +206,7 @@ export class SvgGanttRenderer {
 	private isTaskDifferent(old: GanttChartTask, current: GanttChartTask): boolean {
 		return old.start !== current.start ||
 			   old.end !== current.end ||
+			   old.leadStart !== current.leadStart ||
 			   old.progress !== current.progress ||
 			   old.completed !== current.completed ||
 			   old.name !== current.name ||
@@ -229,6 +234,11 @@ export class SvgGanttRenderer {
 	 * └────────────┴──────────────────────────────┘
 	 */
 	private render(): void {
+		// Preserve scroll across full re-renders (config change / bulk task change).
+		// First render starts at 0 and GanttView then explicitly scrolls to today.
+		const savedScrollLeft = this.ganttContainer?.scrollLeft ?? 0;
+		const savedScrollTop = this.ganttContainer?.scrollTop ?? 0;
+
 		// 清空容器
 		this.container.empty();
 
@@ -305,6 +315,11 @@ export class SvgGanttRenderer {
 
 		// 设置从侧边栏拖拽任务到甘特图的接收
 		this.setupDropReceiver();
+
+		if (this.ganttContainer) {
+			this.ganttContainer.scrollLeft = savedScrollLeft;
+			this.ganttContainer.scrollTop = savedScrollTop;
+		}
 	}
 
 	/**
@@ -330,8 +345,9 @@ export class SvgGanttRenderer {
 		}
 
 		const dates = this.tasks.flatMap(t => [
-			new Date(t.start),
-			new Date(t.end)
+			SvgGanttRenderer.parseLocalDate(t.start),
+			SvgGanttRenderer.parseLocalDate(t.end),
+			...(t.leadStart ? [SvgGanttRenderer.parseLocalDate(t.leadStart)] : [])
 		]);
 
 		let minDate = new Date(Math.min(...dates.map(d => d.getTime())));
@@ -360,6 +376,20 @@ export class SvgGanttRenderer {
 	/**
 	 * 创建 SVG 元素的辅助方法
 	 */
+	/**
+	 * Parse YYYY-MM-DD strings as LOCAL dates.
+	 * new Date('YYYY-MM-DD') parses as UTC midnight, which shifts the whole
+	 * grid by one day in any timezone west of UTC. All grid math must use
+	 * local midnight, matching how tasks are serialized back to markdown.
+	 */
+	private static parseLocalDate(dateStr: string): Date {
+		const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr);
+		if (match) {
+			return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+		}
+		return new Date(dateStr);
+	}
+
 	private createSvgElement(
 		container: HTMLElement,
 		width: number,
@@ -432,6 +462,9 @@ export class SvgGanttRenderer {
 	private setupResizer(): void {
 		if (!this.resizer || !this.mainGrid) return;
 
+		// Re-render safety: detach previous document listeners before registering
+		this.removeResizeListeners();
+
 		const resizer = this.resizer;
 		const mainGrid = this.mainGrid;
 
@@ -444,7 +477,7 @@ export class SvgGanttRenderer {
 		});
 
 		// 鼠标移动调整宽度
-		activeDocument.addEventListener('mousemove', (e) => {
+		this.resizeMoveHandler = (e) => {
 			if (!this.isResizing || !mainGrid) return;
 
 			const layoutRect = mainGrid.getBoundingClientRect();
@@ -491,15 +524,30 @@ export class SvgGanttRenderer {
 					this.taskListSvg.setAttribute('width', String(newWidth));
 				}
 			}
-		});
+		};
 
 		// 鼠标释放结束拖动
-		activeDocument.addEventListener('mouseup', () => {
+		this.resizeEndHandler = () => {
 			if (this.isResizing) {
 				this.isResizing = false;
 				setCssProps(activeDocument.body, { cursor: '', userSelect: '' });
 			}
-		});
+		};
+
+		activeDocument.addEventListener('mousemove', this.resizeMoveHandler);
+		activeDocument.addEventListener('mouseup', this.resizeEndHandler);
+	}
+
+	private removeResizeListeners(): void {
+		if (this.resizeMoveHandler) {
+			activeDocument.removeEventListener('mousemove', this.resizeMoveHandler);
+			this.resizeMoveHandler = null;
+		}
+		if (this.resizeEndHandler) {
+			activeDocument.removeEventListener('mouseup', this.resizeEndHandler);
+			this.resizeEndHandler = null;
+		}
+		this.isResizing = false;
 	}
 
 	/**
@@ -677,8 +725,8 @@ export class SvgGanttRenderer {
 			const targetDate = this.getDateForUnit(this.minDate, unitIndex, this.granularity);
 
 			// 保持任务原有持续天数
-			const originalStart = new Date(ganttTask.start);
-			const originalEnd = new Date(ganttTask.end);
+			const originalStart = SvgGanttRenderer.parseLocalDate(ganttTask.start);
+			const originalEnd = SvgGanttRenderer.parseLocalDate(ganttTask.end);
 			const durationDays = Math.max(1, Math.round(
 				(originalEnd.getTime() - originalStart.getTime()) / 86400000
 			));
@@ -770,6 +818,11 @@ export class SvgGanttRenderer {
 			const y = index * this.rowHeight;
 			const taskNumber = index + 1;
 
+			// Row wrapper with stable data-task-row id: enables incremental
+			// add/remove/update of individual rows by task id.
+			const rowGroup = activeDocument.createElementNS(ns, 'g');
+			rowGroup.setAttribute('data-task-row', task.id);
+
 			// 直接从 GanttChartTask 获取信息（不需要查找 originalTask）
 			const isCompleted = task.completed || task.progress === 100;
 
@@ -788,7 +841,7 @@ export class SvgGanttRenderer {
 			} else {
 				rowBg.setAttribute('fill', 'transparent');
 			}
-			svg.appendChild(rowBg);
+			rowGroup.appendChild(rowBg);
 			this.rowBgElements.taskList.push(rowBg);
 
 			// === 序号列 ===
@@ -804,7 +857,7 @@ export class SvgGanttRenderer {
 			setCssProps(numberDiv, { justifyContent: 'center', height: '100%', fontSize: '11px' });
 			numberDiv.textContent = String(taskNumber);
 			numberForeignObj.appendChild(numberDiv);
-			svg.appendChild(numberForeignObj);
+			rowGroup.appendChild(numberForeignObj);
 
 			// === 任务内容列 ===
 			const contentForeignObj = activeDocument.createElementNS(ns, 'foreignObject');
@@ -846,7 +899,7 @@ export class SvgGanttRenderer {
 			contentDiv.appendChild(textContainer);
 
 			contentForeignObj.appendChild(contentDiv);
-			svg.appendChild(contentForeignObj);
+			rowGroup.appendChild(contentForeignObj);
 
 			// 序号列和任务列之间的竖线分隔
 			const dividerLine = activeDocument.createElementNS(ns, 'line');
@@ -856,7 +909,7 @@ export class SvgGanttRenderer {
 			dividerLine.setAttribute('y2', String((index + 1) * this.rowHeight));
 			dividerLine.setAttribute('stroke', 'var(--background-modifier-border)');
 			dividerLine.setAttribute('stroke-width', '1');
-			svg.appendChild(dividerLine);
+			rowGroup.appendChild(dividerLine);
 
 			// 底部分隔线
 			const line = activeDocument.createElementNS(ns, 'line');
@@ -866,7 +919,8 @@ export class SvgGanttRenderer {
 			line.setAttribute('y2', String((index + 1) * this.rowHeight));
 			line.setAttribute('stroke', 'var(--background-modifier-border)');
 			line.setAttribute('stroke-width', '0.5');
-			svg.appendChild(line);
+			rowGroup.appendChild(line);
+			svg.appendChild(rowGroup);
 		});
 	}
 
@@ -1234,8 +1288,8 @@ export class SvgGanttRenderer {
 		addSvgClass(tasksGroup, GanttClasses.elements.tasks);
 
 		this.tasks.forEach((task, index) => {
-			const taskStart = new Date(task.start);
-			const taskEnd = new Date(task.end);
+			const taskStart = SvgGanttRenderer.parseLocalDate(task.start);
+			const taskEnd = SvgGanttRenderer.parseLocalDate(task.end);
 
 			// 使用网格单元索引定位（依赖于网格）
 			const startUnitIndex = this.findStartGridUnitIndex(taskStart, minDate);
@@ -1251,6 +1305,25 @@ export class SvgGanttRenderer {
 			const barGroup = activeDocument.createElementNS(ns, 'g');
 			addSvgClass(barGroup, GanttClasses.elements.barGroup);
 			barGroup.setAttribute('data-task-bar', task.id);
+
+			// Lead-in segment (creation → start): muted, non-interactive context bar.
+			// Only drawn when it has positive width (created strictly before start).
+			let leadBar: SVGRectElement | null = null;
+			if (task.leadStart) {
+				const leadStartDate = SvgGanttRenderer.parseLocalDate(task.leadStart);
+				const leadStartUnitIndex = this.findStartGridUnitIndex(leadStartDate, minDate);
+				const leadX = this.getGridUnitX(leadStartUnitIndex);
+				const leadWidth = Math.max(x - leadX, 0);
+				if (leadWidth > 0) {
+					leadBar = activeDocument.createElementNS(ns, 'rect') as SVGRectElement;
+					leadBar.setAttribute('x', String(leadX));
+					leadBar.setAttribute('y', String(y));
+					leadBar.setAttribute('width', String(leadWidth));
+					leadBar.setAttribute('height', '24');
+					leadBar.setAttribute('rx', '4');
+					leadBar.classList.add('gc-gantt-view__lead-bar');
+				}
+			}
 
 			// 任务条背景
 			const bar = activeDocument.createElementNS(ns, 'rect');
@@ -1280,6 +1353,7 @@ export class SvgGanttRenderer {
 			bar.setAttribute('fill', fillColor);
 			bar.setAttribute('opacity', '0.85');
 			bar.setAttribute('cursor', 'pointer');
+			bar.classList.add('task-bar');
 
 			// 进度条
 			let progressElement: SVGRectElement | null = null;
@@ -1294,6 +1368,7 @@ export class SvgGanttRenderer {
 				elem.setAttribute('fill', fillColor);
 				elem.setAttribute('opacity', '0.4');
 				progressElement = elem;
+				elem.classList.add('task-progress');
 			}
 
 			// === 添加拖动手柄 ===
@@ -1362,6 +1437,9 @@ export class SvgGanttRenderer {
 			});
 
 			// 添加元素到组
+			if (leadBar) {
+				barGroup.appendChild(leadBar);
+			}
 			if (progressElement) {
 				barGroup.appendChild(progressElement);  // 进度条
 			}
@@ -1497,8 +1575,8 @@ export class SvgGanttRenderer {
 			dragType,
 			task: latestTask,
 			startX,
-			originalStart: new Date(latestTask.start),
-			originalEnd: new Date(latestTask.end),
+			originalStart: SvgGanttRenderer.parseLocalDate(latestTask.start),
+			originalEnd: SvgGanttRenderer.parseLocalDate(latestTask.end),
 			taskMinDate: minDate,
 			hasMoved: false,
 			barElement: bar,
@@ -1763,7 +1841,7 @@ export class SvgGanttRenderer {
 					checkbox.checked = isCompleted;
 				}
 				// 更新序号
-				const numberCell = row.querySelector('.gantt-task-number');
+				const numberCell = row.querySelector(`.${GanttClasses.elements.taskNumberCell}`);
 				if (numberCell) {
 					numberCell.textContent = String(index + 1);
 				}
@@ -1777,6 +1855,12 @@ export class SvgGanttRenderer {
 				svg.removeChild(svg.firstChild);
 			}
 			this.renderTaskList(svg);
+			// Keep SVG height in sync with the new row count (old height would clip).
+			const listHeight = this.headerHeight + this.tasks.length * this.rowHeight;
+			svg.setAttribute('height', String(listHeight));
+			if (this.ganttSvg) {
+				this.ganttSvg.setAttribute('height', String(listHeight));
+			}
 		}
 	}
 
@@ -1809,11 +1893,40 @@ export class SvgGanttRenderer {
 		});
 
 		// 3. 添加新任务条（简化处理：重新渲染整个甘特图区域）
-		if (added.length > 0) {
-			if (this.ganttSvg) {
-				const { minDate, totalUnits, granularity } = this.calculateDateRange();
-				const ganttHeight = this.headerHeight + this.tasks.length * this.rowHeight;
-				this.renderGanttChart(this.ganttSvg, minDate, totalUnits, ganttHeight, granularity);
+		if (added.length > 0 && this.ganttSvg) {
+			// Preserve scroll across the redraw
+			const savedScrollLeft = this.ganttContainer?.scrollLeft ?? 0;
+			const savedScrollTop = this.ganttContainer?.scrollTop ?? 0;
+
+			// Clear stale layers first: renderGanttChart / renderHeader only append
+			while (this.ganttSvg.firstChild) {
+				this.ganttSvg.removeChild(this.ganttSvg.firstChild);
+			}
+
+			const { minDate, totalUnits, granularity } = this.calculateDateRange();
+			this.minDate = minDate;
+			this.totalUnits = totalUnits;
+			const ganttWidth = totalUnits * this.columnWidth + this.padding * 2;
+			const ganttHeight = this.headerHeight + this.tasks.length * this.rowHeight;
+
+			this.ganttSvg.setAttribute('width', String(ganttWidth));
+			this.ganttSvg.setAttribute('height', String(ganttHeight));
+
+			// Header must be redrawn as well: an extended date range with stale
+			// labels would desync from the grid drawn below it.
+			if (this.headerSvg) {
+				while (this.headerSvg.firstChild) {
+					this.headerSvg.removeChild(this.headerSvg.firstChild);
+				}
+				this.headerSvg.setAttribute('width', String(ganttWidth));
+				this.renderHeader(this.headerSvg, minDate, totalUnits, granularity);
+			}
+
+			this.renderGanttChart(this.ganttSvg, minDate, totalUnits, ganttHeight, granularity);
+
+			if (this.ganttContainer) {
+				this.ganttContainer.scrollLeft = savedScrollLeft;
+				this.ganttContainer.scrollTop = savedScrollTop;
 			}
 		}
 	}
@@ -1822,9 +1935,12 @@ export class SvgGanttRenderer {
 	 * 更新单个任务条元素 - 支持颗粒度
 	 */
 	private updateTaskBarElement(barGroup: SVGGElement, task: GanttChartTask): void {
-		const { minDate } = this.calculateDateRange();
-		const startDate = new Date(task.start);
-		const endDate = new Date(task.end);
+		// Reuse the currently rendered range: bars must stay aligned with the
+		// visible grid, and this avoids an O(n) range scan per modified task.
+		if (!this.minDate) return;
+		const minDate = this.minDate;
+		const startDate = SvgGanttRenderer.parseLocalDate(task.start);
+		const endDate = SvgGanttRenderer.parseLocalDate(task.end);
 		const rowIndex = this.tasks.findIndex(t => t.id === task.id);
 		const HANDLE_HIT_AREA = 12;
 		const HANDLE_VISUAL_SIZE = 4;
@@ -1872,6 +1988,22 @@ export class SvgGanttRenderer {
 			progressRect.setAttribute('x', String(x));
 			progressRect.setAttribute('y', String(y));
 			progressRect.setAttribute('width', String(progressWidth));
+		}
+
+		// Update lead-in segment (creation → start) geometry
+		const leadBar = barGroup.querySelector('.gc-gantt-view__lead-bar');
+		if (leadBar) {
+			if (task.leadStart) {
+				const leadStartDate = SvgGanttRenderer.parseLocalDate(task.leadStart);
+				const leadStartUnitIndex = this.findStartGridUnitIndex(leadStartDate, minDate);
+				const leadX = this.getGridUnitX(leadStartUnitIndex);
+				const leadWidth = Math.max(x - leadX, 0);
+				leadBar.setAttribute('x', String(leadX));
+				leadBar.setAttribute('y', String(y));
+				leadBar.setAttribute('width', String(leadWidth));
+				} else {
+				leadBar.setAttribute('width', '0');
+			}
 		}
 
 		// === 更新手柄和小白点位置 ===
@@ -1983,6 +2115,15 @@ export class SvgGanttRenderer {
 	 */
 	destroy(): void {
 		this.hidePopup();
+
+		// Detach document-level listeners: destroying the view during an active
+		// drag/resize would otherwise keep this renderer alive forever.
+		activeDocument.removeEventListener('mousemove', this.handleDragMove);
+		activeDocument.removeEventListener('mouseup', this.handleDragEnd);
+		this.removeResizeListeners();
+		setCssProps(activeDocument.body, { cursor: '', userSelect: '' });
+		this.taskDragState.isDragging = false;
+		this.taskDragState.justFinishedDragging = false;
 		this.headerSvg = null;
 		this.taskListSvg = null;
 		this.ganttSvg = null;

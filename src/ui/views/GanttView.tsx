@@ -235,13 +235,16 @@ function tasksSignature(tasks: GanttChartTask[]): string {
 	return tasks.map((t) => `${t.id}|${t.start}|${t.end}|${t.progress}|${t.completed}|${t.name}|${t.custom_class || ''}`).join('\u0001');
 }
 
+/**
+ * Full engine rebuild is only needed when the row ORDER changes: bars are
+ * positioned by row index, so an insert in the middle shifts every row below.
+ * Appending or removing at the tail keeps the prefix sequence intact and can
+ * be handled incrementally by the renderer (with stable task ids).
+ */
 function shouldFullRefresh(oldTasks: GanttChartTask[], newTasks: GanttChartTask[]): boolean {
-	if (Math.abs(oldTasks.length - newTasks.length) > 5) return true;
-	if (oldTasks.length !== newTasks.length) return true;
-	for (let i = 0; i < oldTasks.length; i++) {
-		if (oldTasks[i].id !== newTasks[i].id) {
-			return true;
-		}
+	const commonLength = Math.min(oldTasks.length, newTasks.length);
+	for (let i = 0; i < commonLength; i++) {
+		if (oldTasks[i].id !== newTasks[i].id) return true;
 	}
 	return false;
 }

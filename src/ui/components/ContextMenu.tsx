@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { ContextMenuClasses } from '../../utils/bem';
@@ -70,6 +70,27 @@ export function ContextMenuTrigger({
 			document.removeEventListener('keydown', handleKeydown);
 		};
 	}, [state, close]);
+
+	// Keep the menu inside the viewport: flip above / left of the cursor when
+	// opening near the bottom / right edge would push the panel off-screen.
+	useLayoutEffect(() => {
+		if (!state || !menuRef.current) return;
+		const rect = menuRef.current.getBoundingClientRect();
+		const margin = 8;
+		let x = state.x;
+		let y = state.y;
+
+		if (y + rect.height > window.innerHeight - margin) {
+			y = Math.max(margin, state.y - rect.height);
+		}
+		if (x + rect.width > window.innerWidth - margin) {
+			x = Math.max(margin, state.x - rect.width);
+		}
+
+		if (x !== state.x || y !== state.y) {
+			setState({ x, y });
+		}
+	}, [state]);
 
 	return (
 		<div

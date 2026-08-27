@@ -41,6 +41,14 @@ export interface GanttChartTask {
 	lineNumber?: number;
 
 	// ==================== 完整任务信息（用于更新时保留原始数据） ====================
+	/**
+	 * Lead-in segment start (creation → effective start), date-only string.
+	 * Rendered as a distinct muted bar ahead of the main draggable bar.
+	 */
+	leadStart?: string;
+	/** Which source field actually provided the draggable start */
+	startSourceField?: DateFieldType;
+
 	/** 原始任务内容（保留完整格式用于写回） */
 	content?: string;
 	/** 任务描述 */
@@ -68,6 +76,8 @@ export interface GanttChartTask {
 	completionDate?: Date;
 	/** 周期规则，如 "every day" */
 	repeat?: string;
+	/** Per-field date precision passthrough from the source task (keeps HH:mm on write-back) */
+	datePrecision?: Partial<Record<'createdDate' | 'startDate' | 'scheduledDate' | 'dueDate' | 'cancelledDate' | 'completionDate', 'day' | 'time'>>;
 	/** 结构化内联元数据字段 (%%[key::value]%%) */
 	metadataFields?: MetadataField[];
 }
