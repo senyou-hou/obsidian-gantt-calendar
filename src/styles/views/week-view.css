@@ -77,7 +77,7 @@
 }
 
 .gc-task-tooltip .gc-task-tooltip__property-value--overdue {
-	color: #d73a49;
+	color: var(--gc-color-red, #d73a49);
 	font-weight: 600;
 }
 
@@ -88,23 +88,23 @@
 }
 
 .gc-task-tooltip .priority-highest {
-	color: #d73a49;
+	color: var(--gc-color-red, #d73a49);
 }
 
 .gc-task-tooltip .priority-high {
-	color: #e36209;
+	color: var(--gc-color-orange, #e36209);
 }
 
 .gc-task-tooltip .priority-medium {
-	color: #ffd33d;
+	color: var(--gc-color-yellow, #ffd33d);
 }
 
 .gc-task-tooltip .priority-low {
-	color: #28a745;
+	color: var(--gc-color-green, #28a745);
 }
 
 .gc-task-tooltip .priority-lowest {
-	color: #0366d6;
+	color: var(--gc-color-blue, #0366d6);
 }
 
 .gc-task-tooltip .gc-task-tooltip__tags {

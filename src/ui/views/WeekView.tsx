@@ -514,6 +514,14 @@ function SlotCreateButton({
 	return (
 		<div
 			className={WeekViewClasses.elements.slotCreate}
+			role="button"
+			tabIndex={0}
+			onKeyDown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					(e.currentTarget as HTMLElement).click();
+				}
+			}}
 			onClick={(e) => {
 				e.stopPropagation();
 				openCreateTaskModal({

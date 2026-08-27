@@ -170,7 +170,8 @@
         "timezone": {
           "name": "Timezone",
           "description": "Select the timezone used by calendar views. Affects 'today' determination and calendar highlighting",
-          "followSystem": "Follow System"
+          "followSystem": "Follow System",
+          "dstNote": "Note: fixed offset, DST is not handled automatically. During DST transitions \"today\" may shift by 1 hour; unaffected in DST-free regions."
         },
         "timeFormat": {
           "name": "Time Format",

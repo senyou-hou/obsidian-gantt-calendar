@@ -130,7 +130,7 @@
 }
 
 .gc-task-card__time-badge--overdue {
-	color: #ef4444;
+	color: var(--gc-color-red, #ef4444);
 	background-color: rgba(239, 68, 68, 0.1);
 	font-weight: 500;
 }

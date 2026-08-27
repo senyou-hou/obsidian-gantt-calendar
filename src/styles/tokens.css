@@ -93,6 +93,19 @@ Author: sugar
 	--gc-font-lg: clamp(15px, 1rem, 18px);
 }
 
+/* 语义色 token：引用 Obsidian 原生色板（--color-*），深浅色主题自动适配；
+   回退值为收编前的硬编码颜色 */
+:root {
+	--gc-color-red: var(--color-red, #ef4444);
+	--gc-color-orange: var(--color-orange, #f97316);
+	--gc-color-yellow: var(--color-yellow, #eab308);
+	--gc-color-green: var(--color-green, #22c55e);
+	--gc-color-blue: var(--color-blue, #3884ff);
+	--gc-color-purple: var(--color-purple, #a855f7);
+	--gc-color-pink: var(--color-pink, #ec4899);
+	--gc-danger: var(--color-red, #ff6b6b);
+}
+
 /* 深色主题微调（阴影更淡，浮层更亮） */
 .theme-dark {
 	--gc-shadow-color: rgba(0, 0, 0, 0.45);

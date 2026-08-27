@@ -191,6 +191,15 @@ export function MonthView(): JSX.Element {
 									className={cellClasses}
 									data-date={key}
 									style={{ gridRow: `${weekRow}`, gridColumn: `${dayIndex + 2}` }}
+									role="button"
+									tabIndex={0}
+									onKeyDown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											setCurrentDate(day.date);
+											setViewType('day');
+										}
+									}}
 									onClick={(e) => {
 										if ((e.target as HTMLElement).closest('.gc-task-card')) return;
 										setCurrentDate(day.date);

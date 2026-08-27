@@ -40,11 +40,18 @@ export function Modal({
 
 	useEffect(() => {
 		if (!open) return;
+		// 焦点管理：打开时记录来源并聚焦面板（键盘用户可直接 Tab 操作），
+		// 关闭后把焦点归还触发元素
+		const previouslyFocused = document.activeElement as HTMLElement | null;
+		panelRef.current?.focus();
 		const handleKeydown = (e: KeyboardEvent) => {
 			if (e.key === 'Escape' && closeOnEsc) onClose();
 		};
 		document.addEventListener('keydown', handleKeydown);
-		return () => document.removeEventListener('keydown', handleKeydown);
+		return () => {
+			document.removeEventListener('keydown', handleKeydown);
+			previouslyFocused?.focus?.();
+		};
 	}, [open, closeOnEsc, onClose]);
 
 	const classes = [ModalClasses.overlay, className].filter(Boolean).join(' ');
@@ -65,6 +72,7 @@ export function Modal({
 				>
 					<motion.div
 						ref={panelRef}
+						tabIndex={-1}
 						className={ModalClasses.panel}
 						style={width ? { width: `${width}px`, maxWidth: '90vw' } : undefined}
 						variants={modalVariants}

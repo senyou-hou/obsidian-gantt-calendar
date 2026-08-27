@@ -300,6 +300,14 @@ export function DayView(): JSX.Element {
 									{hourTasks.length === 0 ? (
 										<div
 											className={DayViewClasses.elements.slotCreate}
+											role="button"
+											tabIndex={0}
+											onKeyDown={(e) => {
+												if (e.key === 'Enter' || e.key === ' ') {
+													e.preventDefault();
+													handleSlotCreateClick(e as unknown as ReactMouseEvent<HTMLDivElement>, h);
+												}
+											}}
 											onClick={(e) => handleSlotCreateClick(e, h)}
 										>
 											<Icon icon="plus" />

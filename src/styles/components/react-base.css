@@ -237,3 +237,6 @@
     justify-content: center;
 }
 
+/* 模态面板作为焦点容器：程序聚焦不显示 outline，键盘导航焦点可见 */
+.gc-modal__panel:focus { outline: none; }
+.gc-modal__panel:focus-visible { outline: 2px solid var(--interactive-accent); }

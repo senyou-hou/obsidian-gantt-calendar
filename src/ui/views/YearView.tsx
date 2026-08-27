@@ -107,6 +107,16 @@ if (months.heatEnabled && count > 0) {
 										key={i}
 										className={dayClasses.join(' ')}
 										data-date={key}
+										role="button"
+										tabIndex={0}
+										onKeyDown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												e.preventDefault();
+												const d = new Date(day.date);
+												setCurrentDate(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+												setViewType('day');
+											}
+										}}
 										onClick={() => {
 											const d = new Date(day.date);
 											const midnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());

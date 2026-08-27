@@ -101,7 +101,10 @@ export class GeneralSettingsBuilder extends BaseBuilder {
 			// 时区设置
 			addSetting(setting => {
 				setting.setName(i18n.t('settings.general.timezoneFormat.timezone.name'))
-					.setDesc(i18n.t('settings.general.timezoneFormat.timezone.description'))
+					.setDesc(
+						i18n.t('settings.general.timezoneFormat.timezone.description') +
+						'\n\n' + i18n.t('settings.general.timezoneFormat.timezone.dstNote')
+					)
 					.addDropdown(drop => {
 						for (const [key, label] of Object.entries(TIMEZONE_OPTIONS)) {
 							drop.addOption(key, key === 'null' ? i18n.t('settings.general.timezoneFormat.timezone.followSystem') : label);

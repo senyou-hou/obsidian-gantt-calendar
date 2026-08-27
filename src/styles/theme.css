@@ -244,7 +244,7 @@
 	content: '';
 	position: absolute;
 	inset: 2px;
-	border: 2px dashed #ff6b6b;
+	border: 2px dashed var(--gc-danger, #ff6b6b);
 	border-radius: 4px;
 	pointer-events: none;
 	z-index: 1;
@@ -258,19 +258,19 @@
 
 /* 年视图今天的阳历和农历日期显示为红色 */
 .gc-year-view__day.today .gc-year-view__day-number {
-	color: #ff6b6b;
+	color: var(--gc-danger, #ff6b6b);
 	font-weight: 600;
 }
 
 .gc-year-view__day.today .gc-year-view__lunar-text {
-	color: #ff6b6b;
+	color: var(--gc-danger, #ff6b6b);
 }
 
 /* 月视图今天样式 */
 /* BEM类名: gc-month-view__day-cell--today */
 .gc-month-view__day-cell--today {
-	background-color: #ff6b6b;
-	border-color: #ff6b6b;
+	background-color: var(--gc-danger, #ff6b6b);
+	border-color: var(--gc-danger, #ff6b6b);
 }
 
 .gc-month-view__day-cell--today .gc-month-view__day-number {
@@ -287,7 +287,7 @@
 }
 
 .gc-week-view__header-cell--today .gc-week-view__day-number {
-	color: #ff6b6b;
+	color: var(--gc-danger, #ff6b6b);
 }
 
 .gc-week-view__tasks-column--today {
