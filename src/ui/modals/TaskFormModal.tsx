@@ -147,10 +147,9 @@ export function TaskFormModal({
 		}
 	}, [mode]);
 
-	const handleClose = () => {
-		setOpen(false);
-		onClose();
-	};
+	// 关闭只切状态，退出动画播完后由 onExited 从宿主移除。
+	// 直接调 onClose 会立即卸载整个弹窗，动画中断且可能丢弃动画中的状态。
+	const handleClose = () => setOpen(false);
 
 	const isEdit = mode === 'edit';
 	const title = isEdit ? i18n.t('modals.editTask.title') : i18n.t('modals.createTask.title');
@@ -216,10 +215,11 @@ export function TaskFormModal({
 				handleClose();
 				return;
 			}
-			if (datesChanged) {
-				task.datePrecision = { ...datePrecision };
-			}
-			await updateTaskProperties(app, task, updates, enabledFormats || []);
+			// 日期精度变化时传入浅拷贝，不变异 store 中的共享任务对象
+			const taskToUpdate = datesChanged
+				? { ...task, datePrecision: { ...datePrecision } }
+				: task;
+			await updateTaskProperties(app, taskToUpdate, updates, enabledFormats || []);
 			onSuccess();
 			handleClose();
 			new Notice(i18n.t('modals.editTask.success'));
@@ -240,7 +240,7 @@ export function TaskFormModal({
 	}, [mode, plugin, app]);
 
 	return (
-		<Modal open={open} onClose={handleClose} title={title} width={560}>
+		<Modal open={open} onClose={handleClose} onExited={onClose} title={title} width={560}>
 			<div className={EditTaskModalClasses.block}>
 				{/* 滚动容器 */}
 				<div className={EditTaskModalClasses.elements.scrollContainer}>

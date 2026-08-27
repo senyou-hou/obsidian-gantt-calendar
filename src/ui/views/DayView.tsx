@@ -133,8 +133,9 @@ export function DayView(): JSX.Element {
 			try {
 				const newDate = new Date(normalized);
 				newDate.setHours(hour, 0, 0, 0);
-				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateField]: 'time' };
-				await updateTaskDateField(app, sourceTask, dateField, newDate, plugin.settings.enabledTaskFormats);
+				// 拖到时间格 = time 精度。传入浅拷贝而非变异 store 中的共享对象
+				const timedTask = { ...sourceTask, datePrecision: { ...sourceTask.datePrecision, [dateField]: 'time' } };
+				await updateTaskDateField(app, timedTask, dateField, newDate, plugin.settings.enabledTaskFormats);
 				Logger.debug('DayView', 'Task time updated via drag-drop', { taskId, hour });
 			} catch (error) {
 				Logger.error('DayView', 'Error updating task time:', error);

@@ -480,25 +480,39 @@ export class MarkdownDataSource implements IDataSource {
 		this.vaultEventRefs.push(deleteRef);
 
 		// 监听文件重命名
+		// 任务 ID 含路径，rename 后旧 ID 全部失效。必须：
+		// 1) 以 deletedFilePaths 通知仓库清除旧路径下的全部缓存任务
+		// 2) 用新路径重新解析产出 created（携带新路径 ID）
+		// 仅换 cache key 会让 L2 缓存永久指向旧路径（P0 缓存脏数据）
 		const renameRef = this.app.vault.on('rename', (file, oldPath) => {
 			if (file instanceof TFile && file.extension === 'md') {
 				const oldCache = this.cache.get(oldPath);
 				if (oldCache) {
 					this.cache.delete(oldPath);
-					this.cache.set(file.path, {
-						...oldCache,
-						lastModified: file.stat.mtime
-					});
-
-					// 发布变化事件（任务ID已变化，需要通知）
-					if (this.changeHandler) {
-						void this.changeHandler({
-							sourceId: this.sourceId,
-							created: [],
-							updated: [],
-							deleted: []
-						});
-					}
+					void (async () => {
+						const parsed = await this.parseFileForScan(file.path).catch(() => null);
+						if (parsed) {
+							this.cache.set(file.path, parsed.cache);
+							await this.changeHandler?.({
+								sourceId: this.sourceId,
+								created: parsed.tasks,
+								updated: [],
+								deleted: [],
+								deletedFilePaths: [oldPath]
+							});
+						} else {
+							// 解析失败（如 metadataCache 未就绪）退化为仅清缓存，
+							// 文件下次被编辑时会走正常 modify 路径补齐
+							this.cache.delete(file.path);
+							await this.changeHandler?.({
+								sourceId: this.sourceId,
+								created: [],
+								updated: [],
+								deleted: [],
+								deletedFilePaths: [oldPath]
+							});
+						}
+					})();
 				}
 			}
 		});

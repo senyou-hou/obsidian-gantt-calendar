@@ -17,6 +17,8 @@ export interface ModalProps {
 	closeOnClickOutside?: boolean;
 	/** Esc 关闭，默认 true */
 	closeOnEsc?: boolean;
+	/** 退出动画完成后触发（用于从宿主安全移除） */
+	onExited?: () => void;
 }
 
 /**
@@ -32,6 +34,7 @@ export function Modal({
 	width,
 	closeOnClickOutside = true,
 	closeOnEsc = true,
+	onExited,
 }: ModalProps): JSX.Element | null {
 	const panelRef = useRef<HTMLDivElement | null>(null);
 
@@ -47,7 +50,7 @@ export function Modal({
 	const classes = [ModalClasses.overlay, className].filter(Boolean).join(' ');
 
 	return createPortal(
-		<AnimatePresence>
+		<AnimatePresence onExitComplete={onExited}>
 			{open ? (
 				<motion.div
 					className={classes}

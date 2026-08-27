@@ -1,4 +1,4 @@
-import { useMemo, useCallback, type JSX } from 'react';
+import { Fragment, useMemo, useCallback, type JSX } from 'react';
 import type { DragEvent as ReactDragEvent } from 'react';
 import { Notice } from 'obsidian';
 import { generateMonthCalendar } from '../../calendar/calendarGenerator';
@@ -154,7 +154,7 @@ export function MonthView(): JSX.Element {
 			{monthData.weeks.map((week, weekIndex) => {
 				const weekRow = weekIndex + 2;
 				return (
-					<>
+					<Fragment key={week.weekNumber}>
 						<div
 							className={MonthViewClasses.elements.weekNumber}
 							style={{ gridRow: `${weekRow}`, gridColumn: '1' }}
@@ -227,7 +227,7 @@ export function MonthView(): JSX.Element {
 								</div>
 							);
 						})}
-					</>
+					</Fragment>
 				);
 			})}
 		</div>
