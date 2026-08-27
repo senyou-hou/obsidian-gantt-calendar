@@ -520,9 +520,16 @@ export class SvgGanttRenderer {
 					}
 				}
 
-				// tasklist SVG 宽度随拖动同步更新（被 grid 容器裁剪）
+				// tasklist SVG 宽度随拖动同步更新（被 grid 容器裁剪）。
+				// viewBox 必须与 width 同步：只改 width 会让 SVG 内容按比例缩放，
+				// 序号列（x=0~40）会跟着拉伸/移动，与 corner 表头错位
 				if (this.taskListSvg) {
 					this.taskListSvg.setAttribute('width', String(newWidth));
+					const taskListViewBox = this.taskListSvg.getAttribute('viewBox')?.split(' ');
+					if (taskListViewBox && taskListViewBox.length === 4) {
+						taskListViewBox[2] = String(newWidth);
+						this.taskListSvg.setAttribute('viewBox', taskListViewBox.join(' '));
+					}
 				}
 			}
 		};
