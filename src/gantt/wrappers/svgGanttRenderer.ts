@@ -190,8 +190,12 @@ export class SvgGanttRenderer {
 			return old && this.isTaskDifferent(old, t);
 		});
 
+		// 修改后的任务日期若超出当前网格范围（如同步拉回一个远期日期），
+		// 增量路径复用旧 minDate 会把条画到负坐标/画布之外——升级为全量渲染
+		const outOfRange = modified.some(t => this.isTaskOutsideRenderedRange(t));
+
 		// 如果变化太大，执行完整渲染
-		if (added.length + removed.length > 5) {
+		if (added.length + removed.length > 5 || outOfRange) {
 			this.render();
 			return;
 		}
@@ -212,6 +216,18 @@ export class SvgGanttRenderer {
 			   old.completed !== current.completed ||
 			   old.name !== current.name ||
 			   old.custom_class !== current.custom_class;
+	}
+
+	/**
+	 * 检查任务（含引导段起点）是否落在当前渲染的日期范围内。
+	 * 增量更新复用既有网格，越界任务必须触发全量重绘重建日期范围。
+	 */
+	private isTaskOutsideRenderedRange(task: GanttChartTask): boolean {
+		if (!this.minDate) return true;
+		const start = SvgGanttRenderer.parseLocalDate(task.leadStart ?? task.start);
+		const end = SvgGanttRenderer.parseLocalDate(task.end);
+		const maxDate = new Date(this.minDate.getTime() + this.totalUnits * (GRANULARITY_CONFIGS[this.granularity]?.milliseconds || 86400000));
+		return start < this.minDate || end > maxDate;
 	}
 
 	/**
@@ -1703,17 +1719,21 @@ export class SvgGanttRenderer {
 		activeDocument.removeEventListener('mousemove', this.handleDragMove);
 		activeDocument.removeEventListener('mouseup', this.handleDragEnd);
 
+		// 无论是否产生位移，mouseup 后紧随的原生 click 事件都可能触发。
+		// 无位移时此处主动处理点击，必须同样设置标志位屏蔽随后的原生 click，
+		// 否则会造成"单击任务条打开两次"的双触发
+		this.taskDragState.justFinishedDragging = true;
+		const dragState = this.taskDragState;
+		window.setTimeout(() => {
+			dragState.justFinishedDragging = false;
+		}, 100); // 100ms 后恢复点击功能
+
 		if (!hasMoved) {
-			// 没有移动，视为点击，不设置标志位
+			// 没有移动，视为点击
 			if (task!) this.handleTaskClick(task);
 			return;
 		}
 
-		// 有移动，设置标志位屏蔽点击事件
-		this.taskDragState.justFinishedDragging = true;
-		window.setTimeout(() => {
-			this.taskDragState.justFinishedDragging = false;
-		}, 100); // 100ms 后恢复点击功能
 
 		const daysDelta = Math.round((e.clientX - startX) / this.columnWidth);
 		Logger.debug('SvgGanttRenderer', 'handleDragEnd: daysDelta calculated', { daysDelta, dragType });
@@ -1846,6 +1866,7 @@ export class SvgGanttRenderer {
 		});
 
 		// 2. 更新现有任务
+		const modifiedIds = new Set(modified.map(t => t.id));
 		allTasks.forEach((task, index) => {
 			const row = svg.querySelector(`[data-task-row="${task.id}"]`);
 			if (row) {
@@ -1859,6 +1880,18 @@ export class SvgGanttRenderer {
 				const numberCell = row.querySelector(`.${GanttClasses.elements.taskNumberCell}`);
 				if (numberCell) {
 					numberCell.textContent = String(index + 1);
+				}
+				// 任务名变更时重渲染文本（此前改名后列表显示旧标题直到全量重绘）
+				if (modifiedIds.has(task.id)) {
+					const textContainer = row.querySelector('.gantt-task-list-item__text');
+					if (textContainer instanceof HTMLElement) {
+						const gf = (this.plugin?.settings?.globalTaskFilter || '').trim();
+						const displayText = (this.plugin?.settings?.showGlobalFilterInTaskText && gf)
+							? gf + ' ' + task.name
+							: task.name;
+						textContainer.empty();
+						this.renderTaskDescriptionWithLinks(textContainer, displayText);
+					}
 				}
 			}
 		});

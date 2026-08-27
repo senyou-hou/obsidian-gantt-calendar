@@ -35,6 +35,8 @@ export function DayView(): JSX.Element {
 	const tasks = useCalendarStore((s) => s.tasks);
 	const filter = useCalendarStore((s) => selectViewFilter(s, 'day'));
 	const refreshTasks = useCalendarStore((s) => s.refreshTasks);
+	// 稳定回调：TaskCard 已 memo，内联箭头函数会使 memo 失效
+	const handleCardRefresh = useCallback(() => refreshTasks(), [refreshTasks]);
 
 	const enableDailyNote = plugin.settings.enableDailyNote !== false;
 	const layout = plugin.settings.dayViewLayout || 'horizontal';
@@ -282,7 +284,7 @@ export function DayView(): JSX.Element {
 												task={t}
 												config={timelineConfig}
 												targetDate={normalized}
-												onRefresh={() => refreshTasks()}
+												onRefresh={handleCardRefresh}
 											/>
 										))}
 									</div>
@@ -320,7 +322,7 @@ export function DayView(): JSX.Element {
 						task={t}
 						config={config}
 						targetDate={normalized}
-						onRefresh={() => refreshTasks()}
+						onRefresh={handleCardRefresh}
 					/>
 				))}
 			</>

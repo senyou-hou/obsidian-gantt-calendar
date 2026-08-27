@@ -29,6 +29,8 @@ export function MonthView(): JSX.Element {
 	const setCurrentDate = useCalendarStore((s) => s.setCurrentDate);
 	const setViewType = useCalendarStore((s) => s.setViewType);
 	const refreshTasks = useCalendarStore((s) => s.refreshTasks);
+	// 稳定回调：TaskCard 已 memo，内联箭头函数会使 memo 失效
+	const handleCardRefresh = useCallback(() => refreshTasks(), [refreshTasks]);
 
 	const startOnMonday = !!plugin.settings.startOnMonday;
 	const dateField = plugin.settings.dateFilterField || 'dueDate';
@@ -215,7 +217,7 @@ export function MonthView(): JSX.Element {
 												task={t}
 												config={config}
 												targetDate={day.date}
-												onRefresh={() => refreshTasks()}
+												onRefresh={handleCardRefresh}
 											/>
 										))}
 										{hasMore ? (

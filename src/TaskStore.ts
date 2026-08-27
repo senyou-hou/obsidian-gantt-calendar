@@ -112,13 +112,28 @@ export class TaskStore {
 
 	/**
 	 * 初始化存储 - 扫描整个笔记库
+	 *
+	 * isInitializing 标志覆盖整个初始化周期（含重试等待），防止设置保存
+	 * 等外部调用在重试窗口内并发触发第二次全量扫描。
 	 */
 	async initialize(globalTaskFilter: string, enabledFormats?: string[], retryCount: number = 0): Promise<void> {
 		if (this.isInitializing) {
 			Logger.debug('TaskStore', 'Already initializing, skipping...');
 			return;
 		}
+		this.isInitializing = true;
+		try {
+			await this.initializeInternal(globalTaskFilter, enabledFormats, retryCount);
+		} finally {
+			this.isInitializing = false;
+		}
+	}
 
+	/**
+	 * 实际初始化流程（含 vault 未就绪重试）。仅由 initialize() 调用，
+	 * 重试走内部递归，不经过外层的并发防护。
+	 */
+	private async initializeInternal(globalTaskFilter: string, enabledFormats?: string[], retryCount: number = 0): Promise<void> {
 		Logger.debug('TaskStore', '===== Starting initialization =====');
 		Logger.debug('TaskStore', 'Config:', {
 			globalTaskFilter,
@@ -126,7 +141,6 @@ export class TaskStore {
 			retryCount
 		});
 
-		this.isInitializing = true;
 		this.globalTaskFilter = (globalTaskFilter || '').trim();
 		this.enabledFormats = enabledFormats || ['tasks', 'dataview'];
 
@@ -148,9 +162,10 @@ export class TaskStore {
 
 		if (markdownFiles.length === 0 && retryCount < 3) {
 			Logger.debug('TaskStore', 'Vault not ready, retrying in 500ms...');
-			this.isInitializing = false;
 			await new Promise(resolve => window.setTimeout(resolve, 500));
-			return this.initialize(globalTaskFilter, enabledFormats, retryCount + 1);
+			// 重试保持内部递归：外层 initialize 的 isInitializing 标志持续生效，
+			// 期间任何并发 initialize() 都会被防护挡下
+			return this.initializeInternal(globalTaskFilter, enabledFormats, retryCount + 1);
 		}
 
 		const scanStartTime = performance.now();
@@ -160,7 +175,6 @@ export class TaskStore {
 		Logger.debug('TaskStore', 'MarkdownDataSource initialized');
 
 		this.isInitialized = true;
-		this.isInitializing = false;
 
 		this.notifyListeners();
 

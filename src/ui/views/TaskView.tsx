@@ -1,4 +1,4 @@
-import { useMemo, type JSX } from 'react';
+import { useCallback, useMemo, type JSX } from 'react';
 import type { GCTask } from '../../types';
 import { getTaskDateField } from '../../types';
 import { TaskViewConfig } from '../../components/TaskCard';
@@ -15,6 +15,8 @@ export function TaskView(): JSX.Element {
 	const tasks = useCalendarStore((s) => s.tasks);
 	const filter = useCalendarStore((s) => selectViewFilter(s, 'task'));
 	const refreshTasks = useCalendarStore((s) => s.refreshTasks);
+	// 稳定回调：TaskCard 已 memo，内联箭头函数会使 memo 失效
+	const handleCardRefresh = useCallback(() => refreshTasks(), [refreshTasks]);
 
 	const timeFieldFilter = plugin.settings.taskViewTimeFieldFilter || 'dueDate';
 	const dateRangeMode = plugin.settings.taskViewDateRangeMode || 'week';
@@ -80,7 +82,7 @@ export function TaskView(): JSX.Element {
 					key={taskKey(task)}
 					task={task}
 					config={config}
-					onRefresh={() => refreshTasks()}
+					onRefresh={handleCardRefresh}
 				/>
 			))}
 		</div>

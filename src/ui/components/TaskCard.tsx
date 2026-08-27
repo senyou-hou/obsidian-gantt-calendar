@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties, type JSX } from 'react';
+import { memo, useMemo, type CSSProperties, type JSX } from 'react';
 import type { GCTask } from '../../types';
 import type { TaskCardConfig } from '../../components/TaskCard/TaskCardConfig';
 import { TaskCardClasses, TimeBadgeClasses } from '../../utils/bem';
@@ -62,7 +62,10 @@ function formatDateForDisplay(date: Date, precision?: 'day' | 'time'): string {
  * React 任务卡片组件
  * 输出与原 TaskCardComponent 完全一致的 DOM 结构与 BEM 类名
  */
-export function TaskCard({ task, config, targetDate, onClick, onRefresh }: ReactTaskCardProps): JSX.Element {
+// memo：tasks 数组引用每次刷新都会变化，但未变化的任务卡片
+//（props 中 task/config/回调均稳定）应跳过重渲染——
+// 调用方需用 useCallback 稳定 onRefresh，否则 memo 无效
+export const TaskCard = memo(function TaskCard({ task, config, targetDate, onClick, onRefresh }: ReactTaskCardProps): JSX.Element {
 	const plugin = usePlugin();
 	const app = useApp();
 	const virtual = isVirtualTask(task);
@@ -423,5 +426,5 @@ export function TaskCard({ task, config, targetDate, onClick, onRefresh }: React
 			{cardContent}
 		</ContextMenuTrigger>
 	);
-}
+});
 

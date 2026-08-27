@@ -71,6 +71,8 @@ export function WeekView(): JSX.Element {
 	const filter = useCalendarStore((s) => selectViewFilter(s, 'week'));
 	const updateSeq = useCalendarStore((s) => s.updateSeq);
 	const refreshTasks = useCalendarStore((s) => s.refreshTasks);
+	// 稳定回调：TaskCard 已 memo，内联箭头函数会使 memo 失效
+	const handleCardRefresh = useCallback(() => refreshTasks(), [refreshTasks]);
 
 	const startOnMonday = !!plugin.settings.startOnMonday;
 	const dateField = plugin.settings.dateFilterField || 'dueDate';
@@ -368,7 +370,7 @@ export function WeekView(): JSX.Element {
 											config={config}
 											targetDate={day.date}
 											onClick={() => tooltip.hide()}
-											onRefresh={() => refreshTasks()}
+											onRefresh={handleCardRefresh}
 										/>
 									))}
 								</div>
@@ -407,7 +409,7 @@ export function WeekView(): JSX.Element {
 													config={config}
 													targetDate={day.date}
 													onClick={() => tooltip.hide()}
-													onRefresh={() => refreshTasks()}
+													onRefresh={handleCardRefresh}
 												/>
 											))}
 										</div>
@@ -465,7 +467,7 @@ export function WeekView(): JSX.Element {
 													config={config}
 													targetDate={day.date}
 													onClick={() => tooltip.hide()}
-													onRefresh={() => refreshTasks()}
+													onRefresh={handleCardRefresh}
 												/>
 											))
 										)}

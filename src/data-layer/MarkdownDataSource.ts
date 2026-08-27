@@ -438,7 +438,10 @@ export class MarkdownDataSource implements IDataSource {
 				}
 
 				const timer = window.setTimeout(() => {
-					void this.parseFileForScan(file.path).then((parseResult) => {
+					// create 事件常在 metadataCache 索引完成前触发，走
+					// parseFileForScan 会拿到空 listItems 导致任务静默丢失。
+					// 改用直接读文件内容解析（modify 路径同款）
+					void this.parseFileFromContent(file.path).then((parseResult) => {
 						if (parseResult && this.changeHandler) {
 							// 新文件的所有任务都是新增的
 							Logger.debug('MarkdownDataSource', `New file created with ${parseResult.tasks.length} tasks: ${file.path}`);
