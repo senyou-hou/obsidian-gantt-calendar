@@ -47,6 +47,34 @@ interface MarkdownFileCache {
 	taskIds: string[];      // 任务ID列表
 	lastModified: number;   // 文件修改时间
 	taskCount: number;      // 任务数量（用于快速判断）
+	// 与 taskIds 同序的轻量指纹：修改事件中用于字段级 diff，
+	// 未变化的任务不再进入 updated（事件风暴修复）
+	taskFingerprints: string[];
+}
+
+/**
+ * 生成任务的轻量指纹：覆盖视图渲染依赖的全部字段。
+ * content 已包含描述/标签/状态标记原文；datePrecision 影响时间显示；
+ * metadataFields 含同步 GUID。任一字段变化指纹即变化。
+ */
+function fingerprintTask(task: GCTask): string {
+	return [
+		task.content,
+		task.completed ? '1' : '0',
+		task.cancelled ? '1' : '0',
+		task.status || '',
+		task.priority || '',
+		task.format || '',
+		task.repeat || '',
+		task.createdDate?.getTime() ?? '',
+		task.startDate?.getTime() ?? '',
+		task.scheduledDate?.getTime() ?? '',
+		task.dueDate?.getTime() ?? '',
+		task.cancelledDate?.getTime() ?? '',
+		task.completionDate?.getTime() ?? '',
+		task.datePrecision ? JSON.stringify(task.datePrecision) : '',
+		task.metadataFields ? JSON.stringify(task.metadataFields) : '',
+	].join('|');
 }
 
 /**
@@ -215,8 +243,7 @@ export class MarkdownDataSource implements IDataSource {
 			if (this.changeHandler) {
 				// 当旧缓存不存在时，将旧任务ID列表视为空数组
 				// 这样可以正确处理"从无任务到有任务"的场景
-				const oldTaskIdsToCompare = oldCache?.taskIds || [];
-				const changes = this.detectChangesByIds(oldTaskIdsToCompare, parseResult?.tasks || []);
+				const changes = this.detectChangesByIds(oldCache, parseResult?.tasks || []);
 
 				if (changes) {
 					Logger.debug('MarkdownDataSource', `Changes detected for ${filePath}:`, {
@@ -344,6 +371,7 @@ export class MarkdownDataSource implements IDataSource {
 			tasks,
 			cache: {
 				taskIds: tasks.map(t => generateTaskId(t)),
+				taskFingerprints: tasks.map(t => fingerprintTask(t)),
 				lastModified: file.stat.mtime,
 				taskCount: tasks.length,
 			},
@@ -386,6 +414,7 @@ export class MarkdownDataSource implements IDataSource {
 			tasks,
 			cache: {
 				taskIds: tasks.map(t => generateTaskId(t)),
+				taskFingerprints: tasks.map(t => fingerprintTask(t)),
 				lastModified: file.stat.mtime,
 				taskCount: tasks.length
 			}
@@ -599,6 +628,7 @@ export class MarkdownDataSource implements IDataSource {
 			if (file instanceof TFile) {
 				this.cache.set(filePath, {
 					taskIds: tasks.map(t => generateTaskId(t)),
+					taskFingerprints: tasks.map(t => fingerprintTask(t)),
 					lastModified: file.stat.mtime,
 					taskCount: tasks.length
 				});
@@ -609,10 +639,20 @@ export class MarkdownDataSource implements IDataSource {
 	}
 
 	/**
-	 * 通过任务ID检测变化
+	 * 通过任务ID + 指纹检测变化（字段级 diff）
+	 *
+	 * 旧实现把文件中所有 ID 交集任务一律标记为 updated——
+	 * 编辑含 500 个任务的大文件时，一个字符的修改会触发 500 次
+	 * task:updated 事件与缓存失效（事件风暴）。现在用缓存中的
+	 * 轻量指纹逐任务比对，只有内容/状态/日期真正变化的才进 updated。
 	 */
-	private detectChangesByIds(oldTaskIds: string[], newTasks: GCTask[]): DataSourceChanges | null {
+	private detectChangesByIds(oldCache: MarkdownFileCache | undefined, newTasks: GCTask[]): DataSourceChanges | null {
+		const oldTaskIds = oldCache?.taskIds || [];
+		const oldFingerprints = oldCache?.taskFingerprints;
 		const oldIdSet = new Set(oldTaskIds);
+		const oldFingerprintMap = oldFingerprints
+			? new Map(oldTaskIds.map((id, i) => [id, oldFingerprints[i]]))
+			: undefined;
 		const newIdMap = new Map(newTasks.map(t => [generateTaskId(t), t]));
 
 		const changes: DataSourceChanges = {
@@ -647,11 +687,14 @@ export class MarkdownDataSource implements IDataSource {
 			}
 		}
 
-		// 检测更新：ID 同时存在于新旧列表中的任务视为已更新
-		// 这样可以确保当用户修改任务属性（日期、优先级等）后视图能正确刷新
+		// 检测更新：ID 交集且指纹变化（无指纹缓存时退化为全量 updated，
+		// 与旧行为一致，保证正确性优先）
 		for (const [id, newTask] of newIdMap) {
 			if (oldIdSet.has(id)) {
-				// 任务 ID 存在，将其加入 updated 列表
+				const oldFp = oldFingerprintMap?.get(id);
+				if (oldFingerprintMap && oldFp === fingerprintTask(newTask)) {
+					continue; // 内容未变化，跳过
+				}
 				// 传递完整的新任务对象，让 TaskRepository 可以完全替换缓存中的旧任务
 				changes.updated.push({
 					id,
