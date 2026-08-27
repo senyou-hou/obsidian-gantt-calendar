@@ -122,6 +122,25 @@ describe('updateTaskProperties - 写回安全', () => {
 		expect(content).toContain('任务B 📅 2026-09-02');
 	});
 
+	it('只有创建+截止的任务：拖拽回退起点时补写开始日期而非改创建时间', async () => {
+		// 场景：任务无 🛫，甘特条以 ➕ 创建时间充当起点
+		const line = '- [ ] 无开始日期任务 ➕ 2026-08-10 📅 2026-08-20';
+		const files = { 'notes/p.md': line };
+		const app = makeApp(files);
+		const task = makeTask(line);
+
+		// 甘特拖拽把起点向后拖到 08-15：handler 应写 startDate（新字段），创建时间不动
+		await updateTaskProperties(app, task, {
+			startDate: new Date(2026, 7, 15),
+			dueDate: new Date(2026, 7, 25),
+		}, ['tasks', 'dataview']);
+
+		const result = files['notes/p.md'];
+		expect(result).toContain('➕ 2026-08-10'); // 创建时间未被修改
+		expect(result).toContain('🛫 2026-08-15'); // 开始日期被新增
+		expect(result).toContain('📅 2026-08-25');
+	});
+
 	it('+ 与数字列表标记的任务可以更新（此前直接抛错）', async () => {
 		const files = { 'notes/p.md': '+ [ ] 加号任务 📅 2026-08-25' };
 		const app = makeApp(files);

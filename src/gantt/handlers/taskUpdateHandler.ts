@@ -64,12 +64,17 @@ export class TaskUpdateHandler {
 			// (startDate, or createdDate fallback for tasks without a start date)
 			const startSource: DateFieldType = ganttTask.startSourceField ?? startField;
 
+			// 当条形起点来自回退字段（如任务无开始日期、以创建时间充当起点）时，
+			// 拖拽的语义是"为任务补一个真正的开始日期"：写入配置的开始字段，
+			// 而不是修改创建时间。创建时间保持原值，创建→开始自然形成引导段。
+			const writeStartTo: DateFieldType = startSource !== startField ? startField : startSource;
+
 			// Dragging is day-granular: re-apply the original time-of-day so a
 			// timed task (yyyy-MM-dd HH:mm) does not lose its time on write-back.
-			const originalStartDate = getTaskDateField(ganttTask as unknown as GCTask, startSource);
+			const originalStartDate = getTaskDateField(ganttTask as unknown as GCTask, writeStartTo);
 			const originalEndDate = getTaskDateField(ganttTask as unknown as GCTask, endField);
 			const updates: Record<string, Date> = {
-				[startSource]: this.preserveTimeOfDay(newStart, originalStartDate, ganttTask.datePrecision?.[startSource]),
+				[writeStartTo]: this.preserveTimeOfDay(newStart, originalStartDate, ganttTask.datePrecision?.[writeStartTo]),
 				[endField]: this.preserveTimeOfDay(newEnd, originalEndDate, ganttTask.datePrecision?.[endField]),
 			};
 
