@@ -232,7 +232,7 @@ export function GanttView(): JSX.Element {
 }
 
 function tasksSignature(tasks: GanttChartTask[]): string {
-	return tasks.map((t) => `${t.id}|${t.start}|${t.end}|${t.progress}|${t.completed}|${t.name}|${t.custom_class || ''}`).join('\u0001');
+	return tasks.map((t) => `${t.id}|${t.start}|${t.end}|${t.leadStart || ''}|${t.progress}|${t.completed}|${t.name}|${t.custom_class || ''}`).join('\u0001');
 }
 
 /**

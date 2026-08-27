@@ -20,6 +20,7 @@ import { TooltipManager, type MousePosition } from '../../utils/tooltipManager';
 import { Logger } from '../../utils/logger';
 import { LinkRenderer } from '../../utils/linkRenderer';
 import { getTodayInTimezone } from '../../dateUtils/timezone';
+import { formatDate } from '../../dateUtils/dateUtilsIndex';
 import { i18n } from '../../i18n/i18n';
 import { openFileInExistingLeaf } from '../../utils/fileOpener';
 import { App } from 'obsidian';
@@ -1790,6 +1791,13 @@ export class SvgGanttRenderer {
 		barElement!.setAttribute('y', String(y));
 		barElement!.setAttribute('width', String(barWidth));
 
+		// 同步更新引导条（创建 → 开始）：拖动/调整主条时其起点与宽度跟随变化
+		const barGroup = barElement!.parentElement as SVGGElement | null;
+		const dragTask = this.taskDragState.task;
+		if (barGroup && dragTask) {
+			this.applyLeadBar(barGroup, this.resolveLeadStart(dragTask, newStart), x, y);
+		}
+
 		// 更新左手柄
 		if (leftHandleElement) {
 			leftHandleElement.setAttribute('x', String(x));
@@ -1990,21 +1998,11 @@ export class SvgGanttRenderer {
 			progressRect.setAttribute('width', String(progressWidth));
 		}
 
-		// Update lead-in segment (creation → start) geometry
-		const leadBar = barGroup.querySelector('.gc-gantt-view__lead-bar');
-		if (leadBar) {
-			if (task.leadStart) {
-				const leadStartDate = SvgGanttRenderer.parseLocalDate(task.leadStart);
-				const leadStartUnitIndex = this.findStartGridUnitIndex(leadStartDate, minDate);
-				const leadX = this.getGridUnitX(leadStartUnitIndex);
-				const leadWidth = Math.max(x - leadX, 0);
-				leadBar.setAttribute('x', String(leadX));
-				leadBar.setAttribute('y', String(y));
-				leadBar.setAttribute('width', String(leadWidth));
-				} else {
-				leadBar.setAttribute('width', '0');
-			}
-		}
+		// Update lead-in segment (creation → start) geometry.
+		// The bar may need to appear or disappear after a drag (e.g. start
+		// dragged before/after creation), so create/remove it as needed —
+		// not just reposition an existing one.
+		this.applyLeadBar(barGroup, this.resolveLeadStart(task, startDate), x, y);
 
 		// === 更新手柄和小白点位置 ===
 		// 左侧手柄
@@ -2041,6 +2039,64 @@ export class SvgGanttRenderer {
 			rightVisual.setAttribute('x', String(rightHandleX + HANDLE_HIT_AREA - 2 - HANDLE_VISUAL_SIZE));
 			rightVisual.setAttribute('y', String(y + 8));
 		}
+	}
+
+	/**
+	 * Resolve the lead-in segment start for a task at its CURRENT bar start.
+	 * `task.leadStart` is fixed at parse time (undefined when created == start),
+	 * so derive it live from createdDate: the segment exists whenever creation
+	 * strictly precedes the bar start — including mid-drag while the user is
+	 * still pulling the left handle.
+	 */
+	private resolveLeadStart(task: GanttChartTask, barStartDate: Date): string | undefined {
+		if (task.leadStart) return task.leadStart;
+		const created = task.createdDate;
+		if (created && !isNaN(created.getTime()) && created.getTime() < barStartDate.getTime()) {
+			return formatDate(created, 'yyyy-MM-dd');
+		}
+		return undefined;
+	}
+
+	/**
+	 * Create / remove / reposition the lead-in segment (creation → start)
+	 * inside a task bar group. Used by live-drag visuals and incremental
+	 * updates so a drag that makes the segment appear, disappear or resize
+	 * is reflected without a full re-render.
+	 */
+	private applyLeadBar(barGroup: SVGGElement, leadStart: string | undefined, barX: number, y: number): void {
+		if (!this.minDate) return;
+		const leadBar = barGroup.querySelector('.gc-gantt-view__lead-bar') as SVGRectElement | null;
+
+		if (!leadStart) {
+			leadBar?.remove();
+			return;
+		}
+
+		const leadStartDate = SvgGanttRenderer.parseLocalDate(leadStart);
+		const leadStartUnitIndex = this.findStartGridUnitIndex(leadStartDate, this.minDate);
+		const leadX = this.getGridUnitX(leadStartUnitIndex);
+		const leadWidth = Math.max(barX - leadX, 0);
+		if (leadWidth <= 0) {
+			leadBar?.remove();
+			return;
+		}
+
+		let target = leadBar;
+		if (!target) {
+			target = activeDocument.createElementNS('http://www.w3.org/2000/svg', 'rect') as SVGRectElement;
+			target.setAttribute('height', '24');
+			target.setAttribute('rx', '4');
+			target.classList.add('gc-gantt-view__lead-bar');
+			// 引导条必须位于主条/进度条之下（DOM 顺序即层级）
+			if (barGroup.firstChild) {
+				barGroup.insertBefore(target, barGroup.firstChild);
+			} else {
+				barGroup.appendChild(target);
+			}
+		}
+		target.setAttribute('x', String(leadX));
+		target.setAttribute('y', String(y));
+		target.setAttribute('width', String(leadWidth));
 	}
 
 	/**
