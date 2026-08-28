@@ -36,11 +36,7 @@ export class CardDisplaySettingsBuilder extends BaseBuilder {
 	render(): void {
 		this.createSettingGroup(i18n.t('settings.cardDisplay.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			const settings = this.plugin.settings as unknown as Record<string, unknown>;

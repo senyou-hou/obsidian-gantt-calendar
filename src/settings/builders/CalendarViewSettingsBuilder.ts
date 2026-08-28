@@ -16,11 +16,7 @@ export class CalendarViewSettingsBuilder extends BaseBuilder {
 		this.createSettingGroup(i18n.t('settings.calendarView.groupTitle'), (group) => {
 			// 统一添加设置项的方法
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 日期筛选字段
@@ -65,11 +61,7 @@ export class CalendarViewSettingsBuilder extends BaseBuilder {
 		// 农历与节日显示控制
 		this.createSettingGroup(i18n.t('settings.calendarView.lunarFestival.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 显示农历日期

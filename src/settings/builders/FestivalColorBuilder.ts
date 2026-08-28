@@ -16,11 +16,7 @@ export class FestivalColorBuilder extends BaseBuilder {
 	render(): void {
 		this.createSettingGroup(i18n.t('settings.festivalColor.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 阳历节日颜色

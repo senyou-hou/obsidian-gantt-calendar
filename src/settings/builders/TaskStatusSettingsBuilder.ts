@@ -16,11 +16,7 @@ export class TaskStatusSettingsBuilder extends BaseBuilder {
 		this.createSettingGroup(i18n.t('settings.taskStatus.groupTitle'), (group) => {
 			const container = group instanceof HTMLElement ? group : this.containerEl;
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(container));
-				}
+				group.addSetting(cb);
 			};
 
 			const cls = SettingsStatusCardClasses.elements;
