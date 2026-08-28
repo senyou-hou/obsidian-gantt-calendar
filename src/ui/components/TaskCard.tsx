@@ -77,7 +77,7 @@ export const TaskCard = memo(function TaskCard({ task, config, targetDate, onCli
 		const viewKey = `${config.viewModifier}View` as keyof typeof TaskCardClasses.modifiers;
 		const mod = TaskCardClasses.modifiers[viewKey];
 		if (mod) list.push(mod);
-		if (config.compact) list.push('gc-task-card--compact');
+		if (config.compact) list.push(TaskCardClasses.modifiers.compact);
 		if (virtual) list.push(TaskCardClasses.modifiers.virtual);
 		else if (task.repeat) list.push(TaskCardClasses.modifiers.recurring);
 		list.push(task.completed ? TaskCardClasses.modifiers.completed : TaskCardClasses.modifiers.pending);

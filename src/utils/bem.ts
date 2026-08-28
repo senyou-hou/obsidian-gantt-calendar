@@ -416,6 +416,7 @@ export const GanttClasses = {
 		tasklistContainer: bem(BLOCKS.GANTT, 'tasklist-container'),
 		chartContainer: bem(BLOCKS.GANTT, 'chart-container'),
 		stickyHeader: bem(BLOCKS.GANTT, 'sticky-header'),
+		leadBar: bem(BLOCKS.GANTT, 'lead-bar'),
 		handleLeft: bem(BLOCKS.GANTT, 'handle-left'),
 		handleRight: bem(BLOCKS.GANTT, 'handle-right'),
 		emptyState: 'gantt-empty-state',

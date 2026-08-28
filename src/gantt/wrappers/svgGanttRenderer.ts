@@ -714,16 +714,16 @@ export class SvgGanttRenderer {
 			if (e.dataTransfer) {
 				e.dataTransfer.dropEffect = 'move';
 			}
-			container.addClass('gc-gantt-view__chart--drop-target');
+			container.addClass(GanttClasses.modifiers.chartDropTarget);
 		});
 
 		container.addEventListener('dragleave', () => {
-			container.removeClass('gc-gantt-view__chart--drop-target');
+			container.removeClass(GanttClasses.modifiers.chartDropTarget);
 		});
 
 		container.addEventListener('drop', (e: DragEvent) => {
 			e.preventDefault();
-			container.removeClass('gc-gantt-view__chart--drop-target');
+			container.removeClass(GanttClasses.modifiers.chartDropTarget);
 
 			if (!e.dataTransfer) return;
 			const taskId = e.dataTransfer.getData('taskId');
@@ -1345,7 +1345,7 @@ export class SvgGanttRenderer {
 					leadBar.setAttribute('width', String(leadWidth));
 					leadBar.setAttribute('height', '24');
 					leadBar.setAttribute('rx', '4');
-					leadBar.classList.add('gc-gantt-view__lead-bar');
+					leadBar.classList.add(GanttClasses.elements.leadBar);
 				}
 			}
 
@@ -1407,7 +1407,7 @@ export class SvgGanttRenderer {
 			leftHandle.setAttribute('height', '24');
 			leftHandle.setAttribute('fill', 'transparent');
 			setCssProps(leftHandle as unknown as HTMLElement, { cursor: 'w-resize' });
-			leftHandle.classList.add('gc-gantt-view__handle-left');
+			leftHandle.classList.add(GanttClasses.elements.handleLeft);
 
 			// 左侧视觉提示
 			const leftVisual = activeDocument.createElementNS(ns, 'rect');
@@ -1429,7 +1429,7 @@ export class SvgGanttRenderer {
 			rightHandle.setAttribute('height', '24');
 			rightHandle.setAttribute('fill', 'transparent');
 			setCssProps(rightHandle as unknown as HTMLElement, { cursor: 'e-resize' });
-			rightHandle.classList.add('gc-gantt-view__handle-right');
+			rightHandle.classList.add(GanttClasses.elements.handleRight);
 
 			// 右侧视觉提示
 			const rightVisual = activeDocument.createElementNS(ns, 'rect');
@@ -2126,7 +2126,7 @@ export class SvgGanttRenderer {
 			target = createSvg('rect');
 			target.setAttribute('height', '24');
 			target.setAttribute('rx', '4');
-			target.classList.add('gc-gantt-view__lead-bar');
+			target.classList.add(GanttClasses.elements.leadBar);
 			// 引导条必须位于主条/进度条之下（DOM 顺序即层级）
 			if (barGroup.firstChild) {
 				barGroup.insertBefore(target, barGroup.firstChild);

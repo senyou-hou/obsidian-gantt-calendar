@@ -2,7 +2,7 @@ import { useMemo, useState, type JSX } from 'react';
 import type { GCTask } from '../../types';
 import { i18n } from '../../i18n/i18n';
 import { TagPill } from '../../components/tagPill';
-import { TagClasses } from '../../utils/bem';
+import { TagClasses, TagSelectorClasses } from '../../utils/bem';
 
 export interface TagSelectorProps {
 	/** 所有任务（用于计算推荐标签） */
@@ -66,9 +66,9 @@ export function TagSelector({ allTasks, initialTags, onChange }: TagSelectorProp
 	return (
 		<div>
 			{/* 推荐标签区域 */}
-			<div className="gc-tag-selector-recommended-section">
-				<small className="gc-tag-selector-label">{i18n.t('modals.createTask.tags.recommendedLabel')}</small>
-				<div className="gc-tag-selector-grid">
+			<div className={TagSelectorClasses.elements.recommendedSection}>
+				<small className={TagSelectorClasses.elements.label}>{i18n.t('modals.createTask.tags.recommendedLabel')}</small>
+				<div className={TagSelectorClasses.elements.grid}>
 					{recommendedTags.length === 0 ? (
 						<small style={{ opacity: 0.5 }}>{i18n.t('modals.createTask.tags.noRecommended')}</small>
 					) : (
@@ -85,9 +85,9 @@ export function TagSelector({ allTasks, initialTags, onChange }: TagSelectorProp
 			</div>
 
 			{/* 已选标签区域 */}
-			<div className="gc-tag-selector-selected-section">
-				<small className="gc-tag-selector-label">{i18n.t('modals.createTask.tags.selectedLabel')}</small>
-				<div className="gc-tag-selector-grid">
+			<div className={TagSelectorClasses.elements.selectedSection}>
+				<small className={TagSelectorClasses.elements.label}>{i18n.t('modals.createTask.tags.selectedLabel')}</small>
+				<div className={TagSelectorClasses.elements.grid}>
 					{selectedTags.size === 0 ? (
 						<small style={{ opacity: 0.5 }}>{i18n.t('modals.createTask.tags.noSelected')}</small>
 					) : (
@@ -105,10 +105,10 @@ export function TagSelector({ allTasks, initialTags, onChange }: TagSelectorProp
 			</div>
 
 			{/* 新建标签输入 */}
-			<div className="gc-tag-selector-new-section">
+			<div className={TagSelectorClasses.elements.newSection}>
 				<input
 					type="text"
-					className="gc-tag-selector-new-input"
+					className={TagSelectorClasses.elements.newInput}
 					placeholder={i18n.t('modals.createTask.tags.inputPlaceholder')}
 					value={newTagInput}
 					onChange={(e) => setNewTagInput(e.target.value)}
@@ -119,7 +119,7 @@ export function TagSelector({ allTasks, initialTags, onChange }: TagSelectorProp
 						}
 					}}
 				/>
-				<button className="gc-tag-selector-new-button" onClick={addNewTag}>
+				<button className={TagSelectorClasses.elements.newButton} onClick={addNewTag}>
 					{i18n.t('common.add')}
 				</button>
 			</div>

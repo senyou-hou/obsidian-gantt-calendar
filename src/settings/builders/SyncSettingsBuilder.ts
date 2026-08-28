@@ -17,7 +17,7 @@ import { FileSuggest } from '../components';
 import { PushFilterConfig, DEFAULT_PUSH_FILTER } from '../../utils/taskFilter';
 import { showSyncResultModal } from '../../ui/modals/SyncResultDialog';
 import { syncFeishuTasks } from '../../commands/feishuCommands';
-import { BLOCKS, bem } from '../../utils/bem';
+import { BLOCKS, bem, SyncHintClasses, SyncTasklistClasses } from '../../utils/bem';
 import { i18n } from '../../i18n/i18n';
 
 /**
@@ -212,62 +212,62 @@ export class SyncSettingsBuilder extends BaseBuilder {
 
 		// Hint when no lists fetched
 		if (taskLists.length === 0) {
-			const hintEl = container.createDiv('gc-sync-hint');
+			const hintEl = container.createDiv(SyncHintClasses.block);
 			hintEl.setText(i18n.t('settings.sync.statusHint.fetchFirst'));
 			return;
 		}
 
 		// Selection status hint
 		if (!selectedGuid) {
-			const hintEl = container.createDiv('gc-sync-hint gc-sync-hint--warning');
+			const hintEl = container.createDiv(`${SyncHintClasses.block} ${SyncHintClasses.modifiers.warning}`);
 			hintEl.setText(i18n.t('settings.sync.statusHint.notSelected'));
 		} else {
 			const selectedList = taskLists.find((tl: FeishuTaskList) => tl.guid === selectedGuid);
-			const hintEl = container.createDiv('gc-sync-hint gc-sync-hint--success');
+			const hintEl = container.createDiv(`${SyncHintClasses.block} ${SyncHintClasses.modifiers.success}`);
 			const listName = selectedList?.name || selectedGuid;
 			hintEl.setText(i18n.t('settings.sync.statusHint.selected', { name: listName }));
-			const nameSpan = hintEl.createSpan('gc-sync-hint__list-name');
+			const nameSpan = hintEl.createSpan(SyncHintClasses.elements.listName);
 			nameSpan.setText(listName);
 			// nameSpan removed; text merged into withSelection line above
 		}
 
 		// Task list cards
-		const taskListEl = container.createDiv('gc-sync-tasklist');
+		const taskListEl = container.createDiv(SyncTasklistClasses.block);
 
-		const headerEl = taskListEl.createDiv('gc-sync-tasklist__header');
+		const headerEl = taskListEl.createDiv(SyncTasklistClasses.elements.header);
 		headerEl.textContent = i18n.t('settings.sync.statusHint.listTitle', { count: taskLists.length });
 
-		const listEl = taskListEl.createDiv('gc-sync-tasklist__grid');
+		const listEl = taskListEl.createDiv(SyncTasklistClasses.elements.grid);
 
 		taskLists.forEach((tl) => {
 			const isSelected = tl.guid === selectedGuid;
-			const itemEl = listEl.createDiv('gc-sync-tasklist-card');
+			const itemEl = listEl.createDiv(SyncTasklistClasses.elements.card);
 			if (isSelected) {
-				itemEl.addClass('gc-sync-tasklist-card--selected');
+				itemEl.addClass(SyncTasklistClasses.elements.cardSelected);
 			}
 
 			// Title
-			const titleDiv = itemEl.createDiv('gc-sync-tasklist-card__name');
+			const titleDiv = itemEl.createDiv(SyncTasklistClasses.elements.cardName);
 			titleDiv.setText((isSelected ? '✓ ' : '') + tl.name);
 
 			// GUID
-			const idDiv = itemEl.createDiv('gc-sync-tasklist-card__guid');
+			const idDiv = itemEl.createDiv(SyncTasklistClasses.elements.cardGuid);
 			idDiv.setText(tl.guid);
 
 			// Creator
 			if (tl.creator) {
-				const creatorDiv = itemEl.createDiv('gc-sync-tasklist-card__meta');
+				const creatorDiv = itemEl.createDiv(SyncTasklistClasses.elements.cardMeta);
 				creatorDiv.setText(i18n.t('settings.sync.taskListCards.creator', { id: tl.creator.id }));
 			}
 
 			// Members
 			if (tl.members && tl.members.length > 0) {
-				const memberDiv = itemEl.createDiv('gc-sync-tasklist-card__meta');
+				const memberDiv = itemEl.createDiv(SyncTasklistClasses.elements.cardMeta);
 				memberDiv.setText(i18n.t('settings.sync.taskListCards.members', { count: tl.members.length }));
 			}
 
 			// Button row
-			const btnRow = itemEl.createDiv('gc-sync-tasklist-card__actions');
+			const btnRow = itemEl.createDiv(SyncTasklistClasses.elements.cardActions);
 
 			// Select / Deselect button
 			const selectBtn = btnRow.createEl('button');
