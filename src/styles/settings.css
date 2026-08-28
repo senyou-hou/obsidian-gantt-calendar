@@ -55,7 +55,7 @@
    ======================================== */
 
 /* 同步免责声明横幅 */
-.gc-settings__sync-warning {
+.gc-settings-sync-warning {
 	display: flex;
 	align-items: flex-start;
 	gap: 14px;
@@ -66,18 +66,18 @@
 	background-color: rgba(255, 140, 0, 0.12);
 }
 
-.gc-settings__sync-warning__icon {
+.gc-settings-sync-warning__icon {
 	flex-shrink: 0;
 	font-size: 22px;
 	line-height: 1.4;
 }
 
-.gc-settings__sync-warning__body {
+.gc-settings-sync-warning__body {
 	flex: 1;
 	min-width: 0;
 }
 
-.gc-settings__sync-warning__title {
+.gc-settings-sync-warning__title {
 	font-size: 15px;
 	font-weight: 600;
 	color: #8b3a00;
@@ -85,7 +85,7 @@
 	line-height: 1.35;
 }
 
-.gc-settings__sync-warning__desc {
+.gc-settings-sync-warning__desc {
 	margin-top: 6px;
 	font-size: 13px;
 	color: #6e4a2a;
@@ -93,25 +93,25 @@
 	letter-spacing: -0.08px;
 }
 
-.gc-settings__sync-warning__desc strong {
+.gc-settings-sync-warning__desc strong {
 	color: #b34700;
 	font-weight: 600;
 }
 
-.theme-dark .gc-settings__sync-warning {
+.theme-dark .gc-settings-sync-warning {
 	border-color: rgba(255, 160, 40, 0.30);
 	background-color: rgba(255, 140, 0, 0.10);
 }
 
-.theme-dark .gc-settings__sync-warning__title {
+.theme-dark .gc-settings-sync-warning__title {
 	color: #f0a050;
 }
 
-.theme-dark .gc-settings__sync-warning__desc {
+.theme-dark .gc-settings-sync-warning__desc {
 	color: #a08060;
 }
 
-.theme-dark .gc-settings__sync-warning__desc strong {
+.theme-dark .gc-settings-sync-warning__desc strong {
 	color: #f0883e;
 }
 
@@ -331,15 +331,15 @@
 	filter: brightness(1.1);
 }
 
-/* ─── Settings Status Card (BEM: gc-settings__status-card) ─── */
+/* ─── Settings Status Card (BEM: gc-settings-status-card) ─── */
 
-.gc-settings__status-card__grid {
+.gc-settings-status-card__grid {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	gap: 16px;
 }
 
-.gc-settings__status-card__card {
+.gc-settings-status-card__card {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
@@ -350,14 +350,14 @@
 }
 
 /* Header: preview pill + key + delete */
-.gc-settings__status-card__header {
+.gc-settings-status-card__header {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	flex-wrap: wrap;
 }
 
-.gc-settings__status-card__dot {
+.gc-settings-status-card__dot {
 	display: inline-flex;
 	align-items: center;
 	padding: 4px 12px;
@@ -369,14 +369,14 @@
 }
 
 
-.gc-settings__status-card__key {
+.gc-settings-status-card__key {
 	font-size: 11px;
 	font-weight: 400;
 	color: var(--text-faint);
 	font-family: var(--font-monospace);
 }
 
-.gc-settings__status-card__delete-btn {
+.gc-settings-status-card__delete-btn {
 	width: 24px;
 	height: 24px;
 	padding: 0;
@@ -393,12 +393,12 @@
 	transition: background-color 120ms ease, color 120ms ease;
 }
 
-.gc-settings__status-card__delete-btn:hover {
+.gc-settings-status-card__delete-btn:hover {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
 
-.gc-settings__status-card__edit-btn {
+.gc-settings-status-card__edit-btn {
 	width: 24px;
 	height: 24px;
 	padding: 0;
@@ -415,12 +415,12 @@
 	transition: background-color 120ms ease, color 120ms ease;
 }
 
-.gc-settings__status-card__edit-btn:hover {
+.gc-settings-status-card__edit-btn:hover {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
 
-.gc-settings__status-card__btn-group {
+.gc-settings-status-card__btn-group {
 	margin-left: auto;
 	display: flex;
 	align-items: center;
@@ -428,62 +428,62 @@
 }
 
 /* Body: theme sections */
-.gc-settings__status-card__body {
+.gc-settings-status-card__body {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
 }
 
-.gc-settings__status-card__divider {
+.gc-settings-status-card__divider {
 	border: none;
 	border-top: 1px solid var(--background-modifier-border);
 	margin: 2px 0;
 }
 
-.gc-settings__status-card__theme-section {
+.gc-settings-status-card__theme-section {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
 }
 
-.gc-settings__status-card__theme-label {
+.gc-settings-status-card__theme-label {
 	font-size: 11px;
 	font-weight: 600;
 	color: var(--text-muted);
 	letter-spacing: -0.12px;
 }
 
-.gc-settings__status-card__color-row {
+.gc-settings-status-card__color-row {
 	display: flex;
 	gap: 16px;
 }
 
-.gc-settings__status-card__color-field {
+.gc-settings-status-card__color-field {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
 	flex: 1;
 }
 
-.gc-settings__status-card__color-label {
+.gc-settings-status-card__color-label {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 }
 
-.gc-settings__status-card__color-label-text {
+.gc-settings-status-card__color-label-text {
 	font-size: 11px;
 	color: var(--text-muted);
 }
 
-.gc-settings__status-card__swatch-wrapper {
+.gc-settings-status-card__swatch-wrapper {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 }
 
-.gc-settings__status-card__hidden-input {
+.gc-settings-status-card__hidden-input {
 	position: absolute;
 	width: 22px;
 	height: 22px;
@@ -492,7 +492,7 @@
 	z-index: 1;
 }
 
-.gc-settings__status-card__swatch {
+.gc-settings-status-card__swatch {
 	width: 22px;
 	height: 22px;
 	border-radius: 9999px;
@@ -503,12 +503,12 @@
 }
 
 /* Macaron quick-pick grid */
-.gc-settings__status-card__macaron-grid {
+.gc-settings-status-card__macaron-grid {
 	display: grid;
 	gap: 4px;
 }
 
-.gc-settings__status-card__macaron-swatch {
+.gc-settings-status-card__macaron-swatch {
 	width: 18px;
 	height: 18px;
 	border-radius: 6px;
@@ -518,22 +518,22 @@
 
 /* ── Add Custom Status Modal ── */
 
-.gc-settings__status-modal__title {
+.gc-settings-status-modal__title {
 	margin-bottom: 16px;
 }
 
-.gc-settings__status-modal__field {
+.gc-settings-status-modal__field {
 	margin-bottom: 16px;
 }
 
-.gc-settings__status-modal__label {
+.gc-settings-status-modal__label {
 	display: block;
 	margin-bottom: 6px;
 	font-weight: 500;
 	font-size: 13px;
 }
 
-.gc-settings__status-modal__input {
+.gc-settings-status-modal__input {
 	width: 100%;
 	padding: 8px;
 	border-radius: 8px;
@@ -543,7 +543,7 @@
 	font-size: 14px;
 }
 
-.gc-settings__status-modal__textarea {
+.gc-settings-status-modal__textarea {
 	width: 100%;
 	padding: 8px;
 	border-radius: 8px;
@@ -554,19 +554,19 @@
 	resize: vertical;
 }
 
-.gc-settings__status-modal__hint {
+.gc-settings-status-modal__hint {
 	font-size: 11px;
 	color: var(--text-muted);
 	margin-bottom: 4px;
 }
 
-.gc-settings__status-modal__error {
+.gc-settings-status-modal__error {
 	font-size: 12px;
 	color: var(--text-error);
 	margin-top: 4px;
 }
 
-.gc-settings__status-modal__theme-section {
+.gc-settings-status-modal__theme-section {
 	padding: 12px;
 	background: var(--background-secondary);
 	border-radius: 12px;
@@ -574,34 +574,34 @@
 	margin-bottom: 16px;
 }
 
-.gc-settings__status-modal__theme-header {
+.gc-settings-status-modal__theme-header {
 	font-weight: 500;
 	margin-bottom: 12px;
 }
 
-.gc-settings__status-modal__color-row {
+.gc-settings-status-modal__color-row {
 	display: flex;
 	gap: 24px;
 }
 
-.gc-settings__status-modal__color-field {
+.gc-settings-status-modal__color-field {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
 }
 
-.gc-settings__status-modal__color-label {
+.gc-settings-status-modal__color-label {
 	font-size: 12px;
 }
 
-.gc-settings__status-modal__swatch-wrapper {
+.gc-settings-status-modal__swatch-wrapper {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
 	gap: 8px;
 }
 
-.gc-settings__status-modal__hidden-input {
+.gc-settings-status-modal__hidden-input {
 	position: absolute;
 	width: 0;
 	height: 0;
@@ -609,7 +609,7 @@
 	pointer-events: none;
 }
 
-.gc-settings__status-modal__swatch {
+.gc-settings-status-modal__swatch {
 	width: 22px;
 	height: 22px;
 	border-radius: 9999px;
@@ -618,18 +618,18 @@
 	transition: transform 120ms ease;
 }
 
-.gc-settings__status-modal__swatch:hover {
+.gc-settings-status-modal__swatch:hover {
 	transform: scale(1.15);
 }
 
-.gc-settings__status-modal__footer {
+.gc-settings-status-modal__footer {
 	display: flex;
 	justify-content: flex-end;
 	gap: 12px;
 	margin-top: 24px;
 }
 
-.gc-settings__status-modal__btn {
+.gc-settings-status-modal__btn {
 	padding: 8px 20px;
 	border-radius: 9999px;
 	border: 1px solid var(--background-modifier-border);
@@ -640,17 +640,17 @@
 	transition: background 120ms ease;
 }
 
-.gc-settings__status-modal__btn:hover {
+.gc-settings-status-modal__btn:hover {
 	background: var(--background-modifier-hover);
 }
 
-.gc-settings__status-modal__btn--primary {
+.gc-settings-status-modal__btn--primary {
 	border: none;
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
 }
 
-.gc-settings__status-modal__btn--primary:hover {
+.gc-settings-status-modal__btn--primary:hover {
 	opacity: 0.9;
 }
 
