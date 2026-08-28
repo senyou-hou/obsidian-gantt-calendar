@@ -1,4 +1,5 @@
 /* Gantt Calendar Plugin - CSS 入口（源码模块化，构建合并为单文件 styles.css） */
+@import "vendor/flatpickr.css";
 @import "tokens.css";
 @import "base.css";
 @import "components/toolbar.css";
