@@ -47,12 +47,16 @@
     border: none;
     border-radius: 6px;
     background: transparent;
+    box-shadow: none;
+    outline: none;
+    appearance: none;
     color: var(--text-normal);
     font-size: var(--font-ui-small);
     cursor: pointer;
     text-align: left;
 }
 
+.gc-dropdown-menu__item:focus-visible,
 .gc-dropdown-menu__item:hover {
     background: var(--background-modifier-hover);
 }
@@ -196,6 +200,9 @@
     border: none;
     border-radius: 6px;
     background: transparent;
+    box-shadow: none;
+    outline: none;
+    appearance: none;
     color: var(--text-normal);
     font-size: var(--font-ui-small);
     cursor: pointer;
@@ -203,6 +210,11 @@
 }
 
 .gc-context-menu__item:hover {
+    background: var(--background-modifier-hover);
+}
+
+/* 键盘焦点用背景高亮指示（默认 outline 已重置） */
+.gc-context-menu__item:focus-visible {
     background: var(--background-modifier-hover);
 }
 
