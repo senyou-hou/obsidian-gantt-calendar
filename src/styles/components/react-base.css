@@ -38,7 +38,8 @@
     text-align: center;
 }
 
-.gc-dropdown-menu__item {
+button.gc-dropdown-menu__item {
+    --input-shadow: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -56,8 +57,8 @@
     text-align: left;
 }
 
-.gc-dropdown-menu__item:focus-visible,
-.gc-dropdown-menu__item:hover {
+button.gc-dropdown-menu__item:focus-visible,
+button.gc-dropdown-menu__item:hover {
     background: var(--background-modifier-hover);
 }
 
@@ -191,7 +192,8 @@
     padding-top: 4px;
 }
 
-.gc-context-menu__item {
+button.gc-context-menu__item {
+    --input-shadow: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -209,16 +211,16 @@
     text-align: left;
 }
 
-.gc-context-menu__item:hover {
+button.gc-context-menu__item:hover {
     background: var(--background-modifier-hover);
 }
 
 /* 键盘焦点用背景高亮指示（默认 outline 已重置） */
-.gc-context-menu__item:focus-visible {
+button.gc-context-menu__item:focus-visible {
     background: var(--background-modifier-hover);
 }
 
-.gc-context-menu__item--disabled {
+button.gc-context-menu__item--disabled {
     opacity: 0.5;
     cursor: default;
 }
