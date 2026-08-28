@@ -2,7 +2,7 @@
    Settings Tab Navigation (设置页 Tab 导航)
    ======================================== */
 
-.gc-settings-tab-nav {
+.gc-settings__tab-nav {
 	display: flex;
 	gap: 4px;
 	padding: 4px;
@@ -13,7 +13,7 @@
 	z-index: 10;
 }
 
-.gc-settings-tab-button {
+.gc-settings__tab-button {
 	flex: 1;
 	padding: 7px 0;
 	font-size: 13px;
@@ -29,23 +29,23 @@
 	text-align: center;
 }
 
-.gc-settings-tab-button:hover {
+.gc-settings__tab-button:hover {
 	color: var(--text-normal);
 	background: var(--background-modifier-hover);
 }
 
-.gc-settings-tab-button--active {
+.gc-settings__tab-button--active {
 	color: var(--text-normal);
 	font-weight: 600;
 	background: var(--background-primary);
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.gc-settings-tab-content {
+.gc-settings__tab-content {
 	display: none;
 }
 
-.gc-settings-tab-content--active {
+.gc-settings__tab-content--active {
 	display: block;
 	margin-top: var(--size-4-4);
 }
@@ -58,11 +58,11 @@
    此处以高特异性 + 明确颜色值兜底，不依赖变量。
    ======================================== */
 
-.gc-settings-tab-content .setting-group {
+.gc-settings__tab-content .setting-group {
 	margin-top: var(--size-4-6);
 }
 
-.gc-settings-tab-content .setting-group .setting-item-heading {
+.gc-settings__tab-content .setting-group .setting-item-heading {
 	padding: 0 var(--size-4-4);
 	background-color: transparent;
 	color: var(--text-normal);
@@ -71,7 +71,7 @@
 	margin-bottom: var(--size-4-4);
 }
 
-.gc-settings-tab-content .setting-group .setting-items {
+.gc-settings__tab-content .setting-group .setting-items {
 	/* 官方卡片背景色：obsidian light 用 #f5f5f5、dark 用 #2d2d2d；
 	   Obsidian 用 --background-primary-alt，我们直接用官方等效变量并带硬编码回退 */
 	background-color: var(--background-primary-alt, #f5f5f5);
@@ -81,11 +81,11 @@
 	border: 1px solid var(--background-modifier-border);
 }
 
-.theme-dark .gc-settings-tab-content .setting-group .setting-items {
+.theme-dark .gc-settings__tab-content .setting-group .setting-items {
 	background-color: var(--background-primary-alt, #2d2d2d);
 }
 
-.gc-settings-tab-content .setting-group .setting-item {
+.gc-settings__tab-content .setting-group .setting-item {
 	border: none;
 	border-top: 1px solid var(--background-modifier-border);
 	background-color: transparent;
@@ -94,12 +94,12 @@
 	margin-bottom: 0;
 }
 
-.gc-settings-tab-content .setting-group .setting-item:first-child {
+.gc-settings__tab-content .setting-group .setting-item:first-child {
 	padding-top: 0;
 	border-top: none;
 }
 
-.gc-settings-tab-content .setting-group .setting-item:last-child {
+.gc-settings__tab-content .setting-group .setting-item:last-child {
 	padding-bottom: 0;
 }
 
