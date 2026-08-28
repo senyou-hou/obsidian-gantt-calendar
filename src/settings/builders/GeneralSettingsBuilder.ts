@@ -18,11 +18,7 @@ export class GeneralSettingsBuilder extends BaseBuilder {
 		// ===== 通用 =====
 		this.createSettingGroup(i18n.t('settings.general.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 默认视图
@@ -91,11 +87,7 @@ export class GeneralSettingsBuilder extends BaseBuilder {
 		// ===== 时区与格式 =====
 		this.createSettingGroup(i18n.t('settings.general.timezoneFormat.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 时区设置

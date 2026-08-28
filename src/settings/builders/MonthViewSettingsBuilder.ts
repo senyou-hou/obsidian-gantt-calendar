@@ -14,11 +14,7 @@ export class MonthViewSettingsBuilder extends BaseBuilder {
 	render(): void {
 		this.createSettingGroup(i18n.t('settings.monthView.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 月视图每天显示的任务数量

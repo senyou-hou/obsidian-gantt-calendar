@@ -40,13 +40,9 @@ export class SyncSettingsBuilder extends BaseBuilder {
 
 		// ===== Group 1: Feishu Task Sync =====
 		this.createSettingGroup(i18n.t('settings.sync.groupTitle'), (group) => {
-			const container = group instanceof HTMLElement ? group : this.containerEl;
+			const container = this.containerEl;
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(container));
-				}
+				group.addSetting(cb);
 			};
 
 			// Feishu account connection
@@ -73,11 +69,7 @@ export class SyncSettingsBuilder extends BaseBuilder {
 		// ===== Group 2: Sync Config =====
 		this.createSettingGroup(i18n.t('settings.sync.syncConfigGroupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// Feishu sync target file
@@ -329,15 +321,11 @@ export class SyncSettingsBuilder extends BaseBuilder {
 
 	// ==================== Feishu Account Settings ====================
 
-	private renderFeishuSettings(group: SettingGroup | HTMLElement, syncConfig: SyncConfiguration): void {
-		const container = group instanceof HTMLElement ? group : this.containerEl;
+	private renderFeishuSettings(group: SettingGroup, syncConfig: SyncConfiguration): void {
+		const container = this.containerEl;
 
 		const addSetting = (cb: (setting: Setting) => void) => {
-			if (this.isSettingGroupAvailable() && group instanceof SettingGroup) {
-				group.addSetting(cb);
-			} else {
-				cb(new Setting(container));
-			}
+			group.addSetting(cb);
 		};
 
 		const isConnected = !!(syncConfig.api?.accessToken);
@@ -779,11 +767,7 @@ export class SyncSettingsBuilder extends BaseBuilder {
 
 		this.createSettingGroup(i18n.t('settings.sync.groupTitles.pushFilter'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// Enable toggle

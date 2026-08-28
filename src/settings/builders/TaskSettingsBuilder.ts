@@ -18,11 +18,7 @@ export class TaskSettingsBuilder extends BaseBuilder {
 		// ===== 任务基础 =====
 		this.createSettingGroup(i18n.t('settings.tasks.basic.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 全局任务筛选标记
@@ -93,11 +89,7 @@ export class TaskSettingsBuilder extends BaseBuilder {
 		// ===== 任务创建 =====
 		this.createSettingGroup(i18n.t('settings.tasks.creation.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 新任务所在标题

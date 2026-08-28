@@ -21,6 +21,8 @@ import { initModalHost, destroyModalHost } from './src/ui/modals/modalHost';
 export default class GanttCalendarPlugin extends Plugin {
 	settings: GanttCalendarSettings;
 	taskCache: TaskStore;
+	/** taskCache 初始化延迟句柄，onunload 时取消 */
+	private initTimeout: number | null = null;
 	dailyNoteIndex: DailyNoteIndex;
 
 	private settingsManager: SettingsManager;
@@ -86,6 +88,11 @@ export default class GanttCalendarPlugin extends Plugin {
 	}
 
 	onunload() {
+		// 取消尚未触发的初始化，防止卸载后对已销毁对象调用 initialize
+		if (this.initTimeout !== null) {
+			window.clearTimeout(this.initTimeout);
+			this.initTimeout = null;
+		}
 		this.syncManagerBridge?.destroy();
 		this.dailyNoteIndex?.destroy();
 		this.themeManager?.destroy();
@@ -176,8 +183,13 @@ export default class GanttCalendarPlugin extends Plugin {
 	}
 
 	private scheduleTaskCacheInit(): void {
+		// onLayoutReady 即 vault/metadataCache 就绪信号，无需额外固定延迟。
+		// 视图通过 taskCache.whenReady() 等待扫描完成（取代此前的 800ms
+		// 魔法延迟 + 空首屏等待事件回流的做法）。
+		// initTimeout 保存句柄：插件卸载时取消，防止对已销毁对象调用 initialize
 		this.app.workspace.onLayoutReady(() => {
-			window.setTimeout(() => {
+			this.initTimeout = window.setTimeout(() => {
+				this.initTimeout = null;
 				this.taskCache.initialize(
 					this.settings.globalTaskFilter,
 					this.settings.enabledTaskFormats
@@ -187,9 +199,9 @@ export default class GanttCalendarPlugin extends Plugin {
 					await this.loadLastSyncTime();
 				}).catch(error => {
 					Logger.error('Main', 'Failed to initialize task cache:', error);
-					new Notice('\u4EFB\u52A1\u7F13\u5B58\u521D\u59CB\u5316\u5931\u8D25');
+					new Notice('任务缓存初始化失败');
 				});
-			}, 800);
+			}, 0);
 		});
 	}
 

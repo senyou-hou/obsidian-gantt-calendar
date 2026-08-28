@@ -18,33 +18,18 @@ export abstract class BaseBuilder {
 	}
 
 	/**
-	 * 检测 SettingGroup API 是否可用（Obsidian 1.11+）
-	 */
-	protected isSettingGroupAvailable(): boolean {
-		try {
-			return typeof SettingGroup === 'function';
-		} catch {
-			return false;
-		}
-	}
-
-	/**
-	 * 创建设置分组（兼容旧版本）
-	 * @param heading 分组标题
-	 * @param callback 设置项回调
+	 * 创建设置分组。
+	 * manifest.json 的 minAppVersion=1.11.0，SettingGroup API 始终可用——
+	 * 不再做运行时检测，直接使用 SettingGroup 生成标准分组卡片。
+	 * 旧版本 fallback（h2 标题）已删除，避免检测逻辑异常导致静默降级。
 	 */
 	protected createSettingGroup(
 		heading: string,
-		callback: (group: SettingGroup | HTMLElement) => void
+		callback: (group: SettingGroup) => void
 	): void {
-		if (this.isSettingGroupAvailable()) {
-			const group = new SettingGroup(this.containerEl);
-			group.setHeading(heading);
-			callback(group);
-		} else {
-			this.containerEl.createEl('h2', { text: heading, cls: 'setting-item-heading' });
-			callback(this.containerEl);
-		}
+		const group = new SettingGroup(this.containerEl);
+		group.setHeading(heading);
+		callback(group);
 	}
 
 	/**

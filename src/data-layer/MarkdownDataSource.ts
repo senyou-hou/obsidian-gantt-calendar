@@ -373,7 +373,7 @@ export class MarkdownDataSource implements IDataSource {
 					const cached = this.cache.get(file.path);
 					if (cached && cached.lastModified === file.stat.mtime) {
 						skippedCount++;
-						return null;
+						return Promise.resolve(null);
 					}
 					return this.parseFileForScan(file.path);
 				})

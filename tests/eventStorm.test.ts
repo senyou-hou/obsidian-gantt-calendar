@@ -3,7 +3,7 @@
  * 修改文件中单个任务时，只有该任务进入 updated，
  * 其余未变化任务不再产生 task:updated 事件。
  */
-import { TFile } from 'obsidian';
+import { TFile, type FileStats } from 'obsidian';
 import { MarkdownDataSource } from '../src/data-layer/MarkdownDataSource';
 import type { DataSourceChanges } from '../src/data-layer/types';
 import type { GCTask } from '../src/types';
@@ -14,7 +14,7 @@ function makeApp(files: Record<string, string>) {
 		const f = new TFile() as TFile & { extension: string; stat: { mtime: number } };
 		f.path = path;
 		f.extension = 'md';
-		f.stat = { mtime: Date.now(), ctime: Date.now(), size: 100 } as never;
+		f.stat = { mtime: Date.now(), ctime: Date.now(), size: 100 };
 		return f;
 	};
 	return {

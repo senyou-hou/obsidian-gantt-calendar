@@ -14,11 +14,7 @@ export class DayViewSettingsBuilder extends BaseBuilder {
 	render(): void {
 		this.createSettingGroup(i18n.t('settings.dayView.groupTitle'), (group) => {
 			const addSetting = (cb: (setting: Setting) => void) => {
-				if (this.isSettingGroupAvailable()) {
-					(group as SettingGroup).addSetting(cb);
-				} else {
-					cb(new Setting(this.containerEl));
-				}
+				group.addSetting(cb);
 			};
 
 			// 显示 Daily Note 开关
