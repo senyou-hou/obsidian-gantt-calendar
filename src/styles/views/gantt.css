@@ -263,7 +263,7 @@
 
 /* 任务状态颜色 */
 .gc-gantt-view__bar-group .task-completed {
-	fill: var(--task-completed-color, #52c41a);
+	fill: var(--gc-task-completed, #52c41a);
 }
 
 .gc-gantt-view__bar-group .task-cancelled {

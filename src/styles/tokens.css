@@ -14,13 +14,13 @@ Author: sugar
 
 :root {
 	/* Festival Colors */
-	--festival-solar-color: #e74c3c;    /* 阳历节日 - 红色 */
-	--festival-lunar-color: #e8a041;    /* 农历节日 - 橙色 */
-	--festival-solar-term-color: #52c41a; /* 节气 - 绿色 */
+	--gc-festival-solar: #e74c3c;    /* 阳历节日 - 红色 */
+	--gc-festival-lunar: #e8a041;    /* 农历节日 - 橙色 */
+	--gc-festival-solar-term: #52c41a; /* 节气 - 绿色 */
 
 	/* Task Status Colors */
-	--task-completed-color: #52c41a;
-	--task-pending-color: #ff7a45;
+	--gc-task-completed: #52c41a;
+	--gc-task-pending: #ff7a45;
 
 	/* Timeline Slot — 卡片高度驱动格子行高 */
 	--gc-tl-card-h: 24px;
@@ -101,6 +101,7 @@ Author: sugar
 	--gc-color-yellow: var(--color-yellow, #eab308);
 	--gc-color-green: var(--color-green, #22c55e);
 	--gc-color-blue: var(--color-blue, #3884ff);
+	--gc-color-cyan: var(--color-cyan, #00bcd4);
 	--gc-color-purple: var(--color-purple, #a855f7);
 	--gc-color-pink: var(--color-pink, #ec4899);
 	--gc-danger: var(--color-red, #ff6b6b);

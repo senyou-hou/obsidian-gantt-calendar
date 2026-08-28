@@ -1360,7 +1360,7 @@ export class SvgGanttRenderer {
 			// 根据状态设置颜色
 			let fillColor = 'var(--interactive-accent)';
 			if (task.progress === 100) {
-				fillColor = 'var(--task-completed-color, #52c41a)';
+				fillColor = 'var(--gc-task-completed, #52c41a)';
 			} else if (task.custom_class) {
 				// 解析自定义类名获取颜色
 				if (task.custom_class.includes('priority-highest')) {

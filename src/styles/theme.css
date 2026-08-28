@@ -9,53 +9,53 @@
 /* Task View 容器 */
 .gc-view--task .gc-task-card--task.gc-task-card--completed {
 	opacity: 0.65;
-	border-left-color: var(--task-completed-color);
+	border-left-color: var(--gc-task-completed);
 }
 
 .gc-view--task .gc-task-card--task.gc-task-card--pending {
-	border-left-color: var(--task-pending-color);
+	border-left-color: var(--gc-task-pending);
 }
 
 /* Day View 容器 */
 .gc-day-view__task-list .gc-task-card--day.gc-task-card--completed {
 	opacity: 0.65;
-	border-left-color: var(--task-completed-color);
+	border-left-color: var(--gc-task-completed);
 }
 
 .gc-day-view__task-list .gc-task-card--day.gc-task-card--pending {
-	border-left-color: var(--task-pending-color);
+	border-left-color: var(--gc-task-pending);
 }
 
 
 /* Week View */
 .gc-week-view__tasks-grid .gc-task-card--week.gc-task-card--completed {
 	opacity: 0.6;
-	border-left-color: var(--task-completed-color);
+	border-left-color: var(--gc-task-completed);
 }
 
 .gc-week-view__tasks-grid .gc-task-card--week.gc-task-card--pending {
-	border-left-color: var(--task-pending-color);
+	border-left-color: var(--gc-task-pending);
 }
 
 /* Month View */
 /* BEM类名: gc-month-view__tasks */
 .gc-month-view__tasks .gc-task-card--month.gc-task-card--completed {
 	opacity: 0.5;
-	border-left-color: var(--task-completed-color);
+	border-left-color: var(--gc-task-completed);
 }
 
 .gc-month-view__tasks .gc-task-card--month.gc-task-card--pending {
-	border-left-color: var(--task-pending-color);
+	border-left-color: var(--gc-task-pending);
 }
 
 /* Gantt View */
 .gc-task-card--gantt.gc-task-card--completed {
 	opacity: 0.7;
-	border-left-color: var(--task-completed-color);
+	border-left-color: var(--gc-task-completed);
 }
 
 .gc-task-card--gantt.gc-task-card--pending {
-	border-left-color: var(--task-pending-color);
+	border-left-color: var(--gc-task-pending);
 }
 
 /* 7.2 Interactive States (hover, active) */
@@ -176,17 +176,17 @@
 
 /* 阳历节日 - 使用CSS变量 */
 .gc-year-view__lunar-text.festival-solar {
-	color: var(--festival-solar-color);
+	color: var(--gc-festival-solar);
 }
 
 /* 农历传统节日 - 使用CSS变量 */
 .gc-year-view__lunar-text.festival-lunar {
-	color: var(--festival-lunar-color);
+	color: var(--gc-festival-lunar);
 }
 
 /* 二十四节气 - 使用CSS变量 */
 .gc-year-view__lunar-text.festival-solarTerm {
-	color: var(--festival-solar-term-color);
+	color: var(--gc-festival-solar-term);
 }
 
 /* Month view specific festival styles */
@@ -197,17 +197,17 @@
 
 /* BEM类名: gc-month-view__lunar-text--festival-solar */
 .gc-month-view__lunar-text--festival-solar {
-	color: var(--festival-solar-color);
+	color: var(--gc-festival-solar);
 }
 
 /* BEM类名: gc-month-view__lunar-text--festival-lunar */
 .gc-month-view__lunar-text--festival-lunar {
-	color: var(--festival-lunar-color);
+	color: var(--gc-festival-lunar);
 }
 
 /* BEM类名: gc-month-view__lunar-text--festival-solar-term */
 .gc-month-view__lunar-text--festival-solar-term {
-	color: var(--festival-solar-term-color);
+	color: var(--gc-festival-solar-term);
 }
 
 /* 7.5 Special States */
