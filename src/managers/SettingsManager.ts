@@ -59,9 +59,9 @@ export class SettingsManager {
 	 * 更新 CSS 变量
 	 */
 	updateCSSVariables(settings: GanttCalendarSettings): void {
-		activeDocument.documentElement.style.setProperty('--festival-solar-color', settings.solarFestivalColor);
-		activeDocument.documentElement.style.setProperty('--festival-lunar-color', settings.lunarFestivalColor);
-		activeDocument.documentElement.style.setProperty('--festival-solar-term-color', settings.solarTermColor);
+		activeDocument.documentElement.style.setProperty('--gc-festival-solar', settings.solarFestivalColor);
+		activeDocument.documentElement.style.setProperty('--gc-festival-lunar', settings.lunarFestivalColor);
+		activeDocument.documentElement.style.setProperty('--gc-festival-solar-term', settings.solarTermColor);
 	}
 
 	/**

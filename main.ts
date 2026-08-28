@@ -16,6 +16,7 @@ import { ThemeManager } from './src/managers/ThemeManager';
 import { ViewManager, activateSidebarView } from './src/managers/ViewManager';
 import { SyncManagerBridge } from './src/managers/SyncManagerBridge';
 import { DailyNoteIndex } from './src/utils/dailyNoteSettingsBridge';
+import { initModalHost, destroyModalHost } from './src/ui/modals/modalHost';
 
 export default class GanttCalendarPlugin extends Plugin {
 	settings: GanttCalendarSettings;
@@ -75,6 +76,9 @@ export default class GanttCalendarPlugin extends Plugin {
 		this.syncManagerBridge = new SyncManagerBridge(this);
 		this.syncManagerBridge.initialize(this.settings.syncConfiguration);
 
+		// 全局 React Modal 宿主（设置面板等非 React 环境也需打开 React 模态框）
+		initModalHost();
+
 		// 启动时自动打开侧边栏
 		this.app.workspace.onLayoutReady(() => {
 			void activateSidebarView(this.app);
@@ -87,6 +91,7 @@ export default class GanttCalendarPlugin extends Plugin {
 		this.themeManager?.destroy();
 		this.taskCache?.clear();
 		TooltipManager.reset();
+		destroyModalHost();
 		this.app.workspace.getLeavesOfType(GC_VIEW_ID).forEach(leaf => leaf.detach());
 		this.app.workspace.getLeavesOfType(GC_SIDEBAR_VIEW_ID).forEach(leaf => leaf.detach());
 	}

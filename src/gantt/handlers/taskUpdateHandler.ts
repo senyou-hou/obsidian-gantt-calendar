@@ -5,6 +5,7 @@
 
 import { App, Notice } from 'obsidian';
 import type { GCTask, IPluginContext } from '../../types';
+import { getTaskDateField } from '../../types';
 import type { GanttChartTask, DateFieldType } from '../types';
 import { formatDate } from '../../dateUtils/dateUtilsIndex';
 import { Logger } from '../../utils/logger';
@@ -59,12 +60,26 @@ export class TaskUpdateHandler {
 				return;
 			}
 
+			// Resolve which source field actually provided the draggable start
+			// (startDate, or createdDate fallback for tasks without a start date)
+			const startSource: DateFieldType = ganttTask.startSourceField ?? startField;
+
+			// 当条形起点来自回退字段（如任务无开始日期、以创建时间充当起点）时，
+			// 拖拽的语义是"为任务补一个真正的开始日期"：写入配置的开始字段，
+			// 而不是修改创建时间。创建时间保持原值，创建→开始自然形成引导段。
+			const writeStartTo: DateFieldType = startSource !== startField ? startField : startSource;
+
+			// Dragging is day-granular: re-apply the original time-of-day so a
+			// timed task (yyyy-MM-dd HH:mm) does not lose its time on write-back.
+			const originalStartDate = getTaskDateField(ganttTask as unknown as GCTask, writeStartTo);
+			const originalEndDate = getTaskDateField(ganttTask as unknown as GCTask, endField);
+			const updates: Record<string, Date> = {
+				[writeStartTo]: this.preserveTimeOfDay(newStart, originalStartDate, ganttTask.datePrecision?.[writeStartTo]),
+				[endField]: this.preserveTimeOfDay(newEnd, originalEndDate, ganttTask.datePrecision?.[endField]),
+			};
+
 			// 使用 updateTaskProperties
 			const { updateTaskProperties } = await import('../../tasks/taskUpdater');
-			const updates: Record<string, Date> = {
-				[startField]: newStart,
-				[endField]: newEnd,
-			};
 
 			// 直接使用 ganttTask（已包含完整任务信息）
 			await updateTaskProperties(
@@ -140,6 +155,20 @@ export class TaskUpdateHandler {
 		void openFileInExistingLeaf(this.app, ganttTask.filePath, ganttTask.lineNumber);
 	}
 
+	/**
+	 * Re-apply the original time-of-day onto a day-granular drag result.
+	 * Keeps HH:mm for timed tasks; date-only tasks stay at midnight.
+	 */
+	private preserveTimeOfDay(newDate: Date, original: Date | undefined, precision?: 'day' | 'time'): Date {
+		if (!original) return newDate;
+		const isTimed = precision === 'time' ||
+			original.getHours() !== 0 || original.getMinutes() !== 0;
+		if (!isTimed) return newDate;
+
+		const result = new Date(newDate);
+		result.setHours(original.getHours(), original.getMinutes(), 0, 0);
+		return result;
+	}
 	/**
 	 * 验证日期变更是否有效
 	 *

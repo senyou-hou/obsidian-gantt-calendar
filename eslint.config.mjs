@@ -59,6 +59,19 @@ export default [
 				xdescribe: "readonly",
 			},
 		},
+		rules: {
+			// Jest 测试跑在 Node 环境,没有 window 可用;
+			// 0.4.x 起该规则为受保护规则,禁止行内 disable,只能在配置层关闭
+			"obsidianmd/prefer-window-timers": "off",
+		},
+	},
+	{
+		// 设置面板保留命令式 Builder 架构(重构决策);
+		// 声明式设置 API 迁移另行规划,该规则为受保护规则只能配置层关闭
+		files: ["src/settings/SettingTab.ts"],
+		rules: {
+			"obsidianmd/settings-tab/prefer-setting-definitions": "off",
+		},
 	},
 	{
 		// 禁用 no-explicit-any 的自动修复(any→unknown 会破坏构建)

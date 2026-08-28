@@ -1,0 +1,123 @@
+/*
+========================================
+Gantt Calendar Plugin Styles - 甘特日历
+Architecture: ITCSS (Inverted Triangle CSS)
+Last Updated: 2025-12-26
+Author: sugar
+========================================
+*/
+
+/* ========================================
+   LAYER 1: Settings (配置层)
+   CSS Variables & Custom Properties
+   ======================================== */
+
+:root {
+	/* Festival Colors */
+	--gc-festival-solar: #e74c3c;    /* 阳历节日 - 红色 */
+	--gc-festival-lunar: #e8a041;    /* 农历节日 - 橙色 */
+	--gc-festival-solar-term: #52c41a; /* 节气 - 绿色 */
+
+	/* Task Status Colors */
+	--gc-task-completed: #52c41a;
+	--gc-task-pending: #ff7a45;
+
+	/* Timeline Slot — 卡片高度驱动格子行高 */
+	--gc-tl-card-h: 24px;
+	--gc-tl-card-gap: 2px;
+	--gc-tl-cards-per-slot: 2;
+	--gc-tl-slot-h: calc(var(--gc-tl-cards-per-slot) * var(--gc-tl-card-h) + (var(--gc-tl-cards-per-slot) - 1) * var(--gc-tl-card-gap));
+}
+
+/* ========================================
+   设计令牌体系（Design Tokens）
+   全插件唯一视觉值源，组件样式一律引用，禁止硬编码
+   ======================================== */
+
+:root {
+	/* 背景层级（引用 Obsidian 主题变量，深浅主题自动适配） */
+	--gc-bg-sunken: var(--background-primary);
+	--gc-bg-surface: var(--background-primary);
+	--gc-bg-raised: var(--background-secondary);
+	--gc-bg-overlay: color-mix(in srgb, var(--background-primary) 85%, transparent);
+
+	/* 文字 */
+	--gc-text-normal: var(--text-normal);
+	--gc-text-muted: var(--text-muted);
+	--gc-text-faint: var(--text-faint);
+
+	/* 边框 */
+	--gc-border: var(--background-modifier-border);
+	--gc-border-strong: var(--background-modifier-border-hover);
+
+	/* 主题色 + 状态色（随主题切换） */
+	--gc-accent: var(--interactive-accent);
+	--gc-status-done: var(--color-green);
+	--gc-status-canceled: var(--color-orange);
+	--gc-status-overdue: var(--color-red);
+
+	/* 圆角 */
+	--gc-radius-xs: 4px;
+	--gc-radius-sm: 6px;
+	--gc-radius-md: 8px;
+	--gc-radius-lg: 12px;
+	--gc-radius-full: 999px;
+
+	/* 间距（4px 基准网格） */
+	--gc-space-1: 4px;
+	--gc-space-2: 8px;
+	--gc-space-3: 12px;
+	--gc-space-4: 16px;
+	--gc-space-5: 24px;
+	--gc-space-6: 32px;
+
+	/* 阴影层级（颜色随主题深浅切换） */
+	--gc-shadow-color: rgba(0, 0, 0, 0.12);
+	--gc-elev-1: 0 1px 2px var(--gc-shadow-color);           /* 凹陷/贴面 */
+	--gc-elev-2: 0 4px 12px var(--gc-shadow-color);          /* 悬浮控件 */
+	--gc-elev-3: 0 8px 24px var(--gc-shadow-color);          /* 下拉/悬浮窗 */
+	--gc-elev-4: 0 16px 48px var(--gc-shadow-color);         /* 模态框 */
+
+	/* 动效 */
+	--gc-dur-fast: 120ms;
+	--gc-dur-normal: 200ms;
+	--gc-dur-slow: 320ms;
+	--gc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--gc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);     /* 弹性，仅用于小幅度回弹 */
+
+	/* 字号（响应式：默认值与 Obsidian 根字号联动，随字体缩放 1-2px 浮动） */
+	--gc-font-xxs: clamp(10px, 0.6875rem, 11px);
+	--gc-font-xs: clamp(11px, 0.75rem, 13px);
+	--gc-font-sm: clamp(12px, 0.8125rem, 14px);
+	--gc-font-md: clamp(13px, 0.875rem, 15px);
+	--gc-font-lg: clamp(15px, 1rem, 18px);
+}
+
+/* 语义色 token：引用 Obsidian 原生色板（--color-*），深浅色主题自动适配；
+   回退值为收编前的硬编码颜色 */
+:root {
+	--gc-color-red: var(--color-red, #ef4444);
+	--gc-color-orange: var(--color-orange, #f97316);
+	--gc-color-yellow: var(--color-yellow, #eab308);
+	--gc-color-green: var(--color-green, #22c55e);
+	--gc-color-blue: var(--color-blue, #3884ff);
+	--gc-color-cyan: var(--color-cyan, #00bcd4);
+	--gc-color-purple: var(--color-purple, #a855f7);
+	--gc-color-pink: var(--color-pink, #ec4899);
+	--gc-danger: var(--color-red, #ff6b6b);
+}
+
+/* 深色主题微调（阴影更淡，浮层更亮） */
+.theme-dark {
+	--gc-shadow-color: rgba(0, 0, 0, 0.45);
+}
+
+/* 系统开启"减少动态效果"：动效全部降级为瞬切 */
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+	}
+}
+

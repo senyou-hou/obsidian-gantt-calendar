@@ -159,7 +159,7 @@ export class EditCustomStatusModal extends Modal {
 	): { input: HTMLInputElement; swatch: HTMLElement } {
 		const cls = SettingsStatusModalClasses.elements;
 		const field = parent.createDiv(cls.colorField);
-		field.createEl('span', { text: label, cls: cls.colorLabel });
+		field.createSpan({ text: label, cls: cls.colorLabel });
 
 		const wrapper = field.createDiv(cls.swatchWrapper);
 		const input = wrapper.createEl('input', {

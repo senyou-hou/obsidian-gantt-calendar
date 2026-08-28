@@ -129,7 +129,7 @@ describe('TaskRepository', () => {
 			await mockSource.createTask(mockTask);
 
 			// 等待事件处理
-			await new Promise(resolve => window.setTimeout(resolve, 10));
+			await new Promise(resolve => setTimeout(resolve, 10));
 
 			const tasks = repository.getAllTasks();
 			expect(tasks).toHaveLength(1);

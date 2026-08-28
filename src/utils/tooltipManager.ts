@@ -53,7 +53,7 @@ export class TooltipManager {
 
 	private ensureTooltip(): HTMLElement {
 		if (!this.tooltip || !activeDocument.body.contains(this.tooltip)) {
-			this.tooltip = activeDocument.body.createDiv('gc-task-tooltip');
+			this.tooltip = activeDocument.body.createDiv(TooltipClasses.block);
 			setCssProps(this.tooltip, { opacity: '0' });
 
 			this.cachedElements.description = this.tooltip.createDiv(TooltipClasses.elements.description);
@@ -61,7 +61,7 @@ export class TooltipManager {
 
 			this.cachedElements.properties.addClass('gc-u-hidden');
 
-			this.tooltip.addClass('gc-task-tooltip--initialized');
+			this.tooltip.addClass(TooltipClasses.modifiers.initialized);
 		}
 		return this.tooltip;
 	}
@@ -76,7 +76,7 @@ export class TooltipManager {
 
 		if (this.currentTask === task && this.currentCard === card) {
 			const isVisible = this.tooltip &&
-							 this.tooltip.classList.contains('gc-task-tooltip--visible') &&
+							 this.tooltip.classList.contains(TooltipClasses.modifiers.visible) &&
 							 this.tooltip.style.opacity !== '0';
 
 			if (isVisible) {
@@ -87,12 +87,12 @@ export class TooltipManager {
 
 		const isDifferentTask = this.currentTask !== task || this.currentCard !== card;
 		const isVisible = this.tooltip &&
-						 this.tooltip.classList.contains('gc-task-tooltip--visible') &&
+						 this.tooltip.classList.contains(TooltipClasses.modifiers.visible) &&
 						 this.tooltip.style.opacity !== '0';
 
 		if (isDifferentTask && isVisible) {
 			if (this.tooltip) {
-				this.tooltip.removeClass('gc-task-tooltip--visible');
+				this.tooltip.removeClass(TooltipClasses.modifiers.visible);
 				setCssProps(this.tooltip, { opacity: '0' });
 			}
 		}
@@ -117,7 +117,7 @@ export class TooltipManager {
 		this.updateContent(task);
 		this.updatePosition(card);
 		setCssProps(tooltip, { opacity: '1' });
-		tooltip.addClass('gc-task-tooltip--visible');
+		tooltip.addClass(TooltipClasses.modifiers.visible);
 	}
 
 	/**
@@ -248,41 +248,38 @@ export class TooltipManager {
 	private updatePosition(card: HTMLElement): void {
 		if (!this.tooltip) return;
 
-		const tooltipWidth = 300;
-		const tooltipHeight = this.estimateTooltipHeight();
+		// 实测尺寸（tooltip 已渲染且 opacity 为 0，不影响布局测量）
+		const tooltipWidth = this.tooltip.offsetWidth || 300;
+		const tooltipHeight = this.tooltip.offsetHeight || this.estimateTooltipHeight();
+		const gap = 12;
+
+		const rect = card.getBoundingClientRect();
 
 		let left: number;
 		let top: number;
 
-		if (this.mousePosition) {
-			left = this.mousePosition.x + 15;
-			top = this.mousePosition.y + 15;
+		// 优先锚定卡片矩形：右侧放置、顶部对齐；卡片无尺寸时退回光标坐标
+		if (rect.width > 0 && rect.height > 0) {
+			left = rect.right + gap;
+			top = rect.top;
+		} else if (this.mousePosition) {
+			left = this.mousePosition.x + gap;
+			top = this.mousePosition.y + gap;
 		} else {
-			const rect = card.getBoundingClientRect();
-			left = rect.right + 10;
+			left = rect.right + gap;
 			top = rect.top;
 		}
 
+		// 水平：右侧放不下则翻到左侧，再做边界钳制
 		if (left + tooltipWidth > window.innerWidth) {
-			if (this.mousePosition) {
-				left = this.mousePosition.x - tooltipWidth - 15;
-			} else {
-				const rect = card.getBoundingClientRect();
-				left = rect.left - tooltipWidth - 10;
-			}
+			left = rect.left - tooltipWidth - gap;
 		}
-		if (left < 10) {
-			left = 10;
-		}
-		if (top + tooltipHeight > window.innerHeight) {
-			if (this.mousePosition) {
-				top = this.mousePosition.y - tooltipHeight - 15;
-			} else {
-				top = window.innerHeight - tooltipHeight - 10;
-			}
-		}
-		if (top < 10) {
-			top = 10;
+		left = Math.max(10, Math.min(left, window.innerWidth - tooltipWidth - 10));
+
+		// 垂直：顶部对齐，溢出底部则向上收缩，并做边界钳制
+		top = Math.max(10, top);
+		if (top + tooltipHeight > window.innerHeight - 10) {
+			top = Math.max(10, window.innerHeight - tooltipHeight - 10);
 		}
 
 		setCssProps(this.tooltip, { left: `${left}px`, top: `${top}px` });
@@ -337,7 +334,7 @@ export class TooltipManager {
 			this.hideTimeout = null;
 		}
 		if (this.tooltip) {
-			this.tooltip.removeClass('gc-task-tooltip--visible');
+			this.tooltip.removeClass(TooltipClasses.modifiers.visible);
 			setCssProps(this.tooltip, { opacity: '0' });
 		}
 	}
@@ -349,7 +346,7 @@ export class TooltipManager {
 		}
 		this.hideTimeout = window.setTimeout(() => {
 			if (this.tooltip) {
-				this.tooltip.removeClass('gc-task-tooltip--visible');
+				this.tooltip.removeClass(TooltipClasses.modifiers.visible);
 				setCssProps(this.tooltip, { opacity: '0' });
 			}
 		}, this.config.hideDelay);

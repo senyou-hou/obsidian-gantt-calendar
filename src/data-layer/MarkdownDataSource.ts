@@ -47,6 +47,34 @@ interface MarkdownFileCache {
 	taskIds: string[];      // 任务ID列表
 	lastModified: number;   // 文件修改时间
 	taskCount: number;      // 任务数量（用于快速判断）
+	// 与 taskIds 同序的轻量指纹：修改事件中用于字段级 diff，
+	// 未变化的任务不再进入 updated（事件风暴修复）
+	taskFingerprints: string[];
+}
+
+/**
+ * 生成任务的轻量指纹：覆盖视图渲染依赖的全部字段。
+ * content 已包含描述/标签/状态标记原文；datePrecision 影响时间显示；
+ * metadataFields 含同步 GUID。任一字段变化指纹即变化。
+ */
+function fingerprintTask(task: GCTask): string {
+	return [
+		task.content,
+		task.completed ? '1' : '0',
+		task.cancelled ? '1' : '0',
+		task.status || '',
+		task.priority || '',
+		task.format || '',
+		task.repeat || '',
+		task.createdDate?.getTime() ?? '',
+		task.startDate?.getTime() ?? '',
+		task.scheduledDate?.getTime() ?? '',
+		task.dueDate?.getTime() ?? '',
+		task.cancelledDate?.getTime() ?? '',
+		task.completionDate?.getTime() ?? '',
+		task.datePrecision ? JSON.stringify(task.datePrecision) : '',
+		task.metadataFields ? JSON.stringify(task.metadataFields) : '',
+	].join('|');
 }
 
 /**
@@ -66,6 +94,10 @@ export class MarkdownDataSource implements IDataSource {
 	// 性能优化：防抖处理文件修改事件
 	private debounceTimers: Map<string, number> = new Map();
 	private readonly DEBOUNCE_MS = 50;
+	/** 防抖最大等待：连续编辑下最迟重解析间隔 */
+	private readonly MAX_WAIT_MS = 500;
+	/** 各文件防抖窗口首次事件时间（maxWait 用） */
+	private debounceFirstAt: Map<string, number> = new Map();
 	// 防止并发处理同一文件
 	private processingFiles: Set<string> = new Set();
 	// 待处理文件队列：当文件正在处理时，新的修改请求会被加入此队列
@@ -89,8 +121,16 @@ export class MarkdownDataSource implements IDataSource {
 		Logger.debug('MarkdownDataSource', 'initialize() started');
 		const scanStartTime = performance.now();
 
-		// 【修复】清除旧缓存，防止使用过期的筛选符配置
-		this.cache.clear();
+		// 【性能优化】仅当筛选符/格式配置变化时才清空缓存：
+		// 配置不变（如无关设置的保存触发重初始化）时，mtime 未变的文件
+		// 可直接跳过重解析（配合 scanAllFiles 的增量跳过），
+		// 大库的重初始化从全量扫描降为只扫变更文件
+		const configChanged =
+			this.config.globalFilter !== config.globalFilter ||
+			(this.config.enabledFormats || []).join(',') !== (config.enabledFormats || []).join(',');
+		if (configChanged) {
+			this.cache.clear();
+		}
 
 		this.config = config;
 
@@ -198,6 +238,29 @@ export class MarkdownDataSource implements IDataSource {
 	 * 5. 清除处理中标记
 	 * 6. 如果有待处理标记，递归重新检查（避免遗漏快速连续的修改）
 	 */
+
+	/**
+	 * 带重置与 maxWait 的文件级防抖。
+	 * 纯 trailing 防抖在连续编辑（间隔 < DEBOUNCE_MS）下会无限期推迟重解析，
+	 * 首次事件后最多 MAX_WAIT_MS 强制冲刷一次，保证视图数据最迟刷新间隔。
+	 */
+	private scheduleFileDebounce(path: string, run: () => void): void {
+		const now = Date.now();
+		const firstAt = this.debounceFirstAt.get(path) ?? now;
+		this.debounceFirstAt.set(path, firstAt);
+		const delay = Math.max(this.DEBOUNCE_MS, this.MAX_WAIT_MS - (now - firstAt));
+
+		const existing = this.debounceTimers.get(path);
+		if (existing !== undefined) window.clearTimeout(existing);
+
+		const timer = window.setTimeout(() => {
+			this.debounceTimers.delete(path);
+			this.debounceFirstAt.delete(path);
+			run();
+		}, delay);
+		this.debounceTimers.set(path, timer);
+	}
+
 	private async processFileModification(filePath: string): Promise<void> {
 		this.processingFiles.add(filePath);
 		Logger.debug('MarkdownDataSource', `Processing file modification: ${filePath}`);
@@ -215,8 +278,7 @@ export class MarkdownDataSource implements IDataSource {
 			if (this.changeHandler) {
 				// 当旧缓存不存在时，将旧任务ID列表视为空数组
 				// 这样可以正确处理"从无任务到有任务"的场景
-				const oldTaskIdsToCompare = oldCache?.taskIds || [];
-				const changes = this.detectChangesByIds(oldTaskIdsToCompare, parseResult?.tasks || []);
+				const changes = this.detectChangesByIds(oldCache, parseResult?.tasks || []);
 
 				if (changes) {
 					Logger.debug('MarkdownDataSource', `Changes detected for ${filePath}:`, {
@@ -256,6 +318,7 @@ export class MarkdownDataSource implements IDataSource {
 
 		this.debounceTimers.forEach((timer) => window.clearTimeout(timer));
 		this.debounceTimers.clear();
+		this.debounceFirstAt.clear();
 		this.processingFiles.clear();
 		this.pendingFileChecks.clear();  // 清理待处理队列
 		this.cache.clear();
@@ -280,13 +343,40 @@ export class MarkdownDataSource implements IDataSource {
 
 		// 【关键优化】在扫描阶段收集所有任务，避免二次解析
 		const allTasks: GCTask[] = [];
+		let skippedCount = 0;
+		const vaultPaths = new Set(markdownFiles.map(f => f.path));
+
+		// 清理已从 vault 消失的文件的残留缓存（这些任务此前已由
+		// repository 持有，需要发 deletedFilePaths 让仓库移除）
+		for (const cachedPath of Array.from(this.cache.keys())) {
+			if (!vaultPaths.has(cachedPath)) {
+				this.cache.delete(cachedPath);
+				if (this.changeHandler) {
+					await this.changeHandler({
+						sourceId: this.sourceId,
+						created: [],
+						updated: [],
+						deleted: [],
+						deletedFilePaths: [cachedPath]
+					});
+				}
+			}
+		}
 
 		for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
 			const batch = batches[batchIndex];
 
-			// 并行处理批次内的文件
+			// 并行处理批次内的文件；mtime 未变的文件跳过重解析
+			//（其任务已在 repository 中，无需重发 created）
 			const batchResults = await Promise.all(
-				batch.map(file => this.parseFileForScan(file.path))
+				batch.map(file => {
+					const cached = this.cache.get(file.path);
+					if (cached && cached.lastModified === file.stat.mtime) {
+						skippedCount++;
+						return null;
+					}
+					return this.parseFileForScan(file.path);
+				})
 			);
 
 			// 将结果合并到 allTasks
@@ -302,6 +392,9 @@ export class MarkdownDataSource implements IDataSource {
 			}
 		}
 
+		if (skippedCount > 0) {
+			Logger.stats('MarkdownDataSource', `Incremental scan: skipped ${skippedCount} unchanged files (mtime match)`);
+		}
 		Logger.debug('MarkdownDataSource', 'All files scanned');
 		return allTasks;
 	}
@@ -344,6 +437,7 @@ export class MarkdownDataSource implements IDataSource {
 			tasks,
 			cache: {
 				taskIds: tasks.map(t => generateTaskId(t)),
+				taskFingerprints: tasks.map(t => fingerprintTask(t)),
 				lastModified: file.stat.mtime,
 				taskCount: tasks.length,
 			},
@@ -386,6 +480,7 @@ export class MarkdownDataSource implements IDataSource {
 			tasks,
 			cache: {
 				taskIds: tasks.map(t => generateTaskId(t)),
+				taskFingerprints: tasks.map(t => fingerprintTask(t)),
 				lastModified: file.stat.mtime,
 				taskCount: tasks.length
 			}
@@ -402,26 +497,15 @@ export class MarkdownDataSource implements IDataSource {
 			if (file instanceof TFile && file.extension === 'md') {
 				Logger.debug('MarkdownDataSource', `File modify event received: ${file.path}`);
 
-				const existingTimer = this.debounceTimers.get(file.path);
-				if (existingTimer !== undefined) {
-					window.clearTimeout(existingTimer);
-					Logger.debug('MarkdownDataSource', `Debouncing file modification: ${file.path}`);
-				}
-
-				const timer = window.setTimeout(() => {
+				this.scheduleFileDebounce(file.path, () => {
 					// 【修复Bug 2】如果文件正在处理，标记为待处理而非跳过
 					if (this.processingFiles.has(file.path)) {
 						this.pendingFileChecks.add(file.path);
 						Logger.debug('MarkdownDataSource', `File pending for recheck: ${file.path}`);
 						return;
 					}
-
-					void this.processFileModification(file.path).then(() => {
-						this.debounceTimers.delete(file.path);
-					});
-				}, this.DEBOUNCE_MS);
-
-				this.debounceTimers.set(file.path, timer);
+					void this.processFileModification(file.path);
+				});
 			}
 		});
 		this.vaultEventRefs.push(modifyRef);
@@ -432,13 +516,11 @@ export class MarkdownDataSource implements IDataSource {
 			if (file instanceof TFile && file.extension === 'md') {
 				Logger.debug('MarkdownDataSource', `File create event: ${file.path}`);
 
-				const existingTimer = this.debounceTimers.get(file.path);
-				if (existingTimer !== undefined) {
-					window.clearTimeout(existingTimer);
-				}
-
-				const timer = window.setTimeout(() => {
-					void this.parseFileForScan(file.path).then((parseResult) => {
+				this.scheduleFileDebounce(file.path, () => {
+					// create 事件常在 metadataCache 索引完成前触发，走
+					// parseFileForScan 会拿到空 listItems 导致任务静默丢失。
+					// 改用直接读文件内容解析（modify 路径同款）
+					void this.parseFileFromContent(file.path).then((parseResult) => {
 						if (parseResult && this.changeHandler) {
 							// 新文件的所有任务都是新增的
 							Logger.debug('MarkdownDataSource', `New file created with ${parseResult.tasks.length} tasks: ${file.path}`);
@@ -450,11 +532,8 @@ export class MarkdownDataSource implements IDataSource {
 							});
 							this.cache.set(file.path, parseResult.cache);
 						}
-						this.debounceTimers.delete(file.path);
 					});
-				}, this.DEBOUNCE_MS);
-
-				this.debounceTimers.set(file.path, timer);
+				});
 			}
 		});
 		this.vaultEventRefs.push(createRef);
@@ -480,25 +559,39 @@ export class MarkdownDataSource implements IDataSource {
 		this.vaultEventRefs.push(deleteRef);
 
 		// 监听文件重命名
+		// 任务 ID 含路径，rename 后旧 ID 全部失效。必须：
+		// 1) 以 deletedFilePaths 通知仓库清除旧路径下的全部缓存任务
+		// 2) 用新路径重新解析产出 created（携带新路径 ID）
+		// 仅换 cache key 会让 L2 缓存永久指向旧路径（P0 缓存脏数据）
 		const renameRef = this.app.vault.on('rename', (file, oldPath) => {
 			if (file instanceof TFile && file.extension === 'md') {
 				const oldCache = this.cache.get(oldPath);
 				if (oldCache) {
 					this.cache.delete(oldPath);
-					this.cache.set(file.path, {
-						...oldCache,
-						lastModified: file.stat.mtime
-					});
-
-					// 发布变化事件（任务ID已变化，需要通知）
-					if (this.changeHandler) {
-						void this.changeHandler({
-							sourceId: this.sourceId,
-							created: [],
-							updated: [],
-							deleted: []
-						});
-					}
+					void (async () => {
+						const parsed = await this.parseFileForScan(file.path).catch(() => null);
+						if (parsed) {
+							this.cache.set(file.path, parsed.cache);
+							await this.changeHandler?.({
+								sourceId: this.sourceId,
+								created: parsed.tasks,
+								updated: [],
+								deleted: [],
+								deletedFilePaths: [oldPath]
+							});
+						} else {
+							// 解析失败（如 metadataCache 未就绪）退化为仅清缓存，
+							// 文件下次被编辑时会走正常 modify 路径补齐
+							this.cache.delete(file.path);
+							await this.changeHandler?.({
+								sourceId: this.sourceId,
+								created: [],
+								updated: [],
+								deleted: [],
+								deletedFilePaths: [oldPath]
+							});
+						}
+					})();
 				}
 			}
 		});
@@ -518,23 +611,14 @@ export class MarkdownDataSource implements IDataSource {
 					Logger.debug('MarkdownDataSource', `[DEV] Metadata changed: ${file.path}`);
 
 					// 使用相同的防抖机制
-					const existingTimer = this.debounceTimers.get(file.path);
-					if (existingTimer !== undefined) {
-						window.clearTimeout(existingTimer);
-					}
-
-					const timer = window.setTimeout(() => {
+					this.scheduleFileDebounce(file.path, () => {
 						// 如果文件正在处理，标记为待处理
 						if (this.processingFiles.has(file.path)) {
 							this.pendingFileChecks.add(file.path);
 							return;
 						}
-						void this.processFileModification(file.path).then(() => {
-							this.debounceTimers.delete(file.path);
-						});
-					}, this.DEBOUNCE_MS);
-
-					this.debounceTimers.set(file.path, timer);
+						void this.processFileModification(file.path);
+					});
 				}
 			});
 			this.vaultEventRefs.push(metadataRef);
@@ -582,6 +666,7 @@ export class MarkdownDataSource implements IDataSource {
 			if (file instanceof TFile) {
 				this.cache.set(filePath, {
 					taskIds: tasks.map(t => generateTaskId(t)),
+					taskFingerprints: tasks.map(t => fingerprintTask(t)),
 					lastModified: file.stat.mtime,
 					taskCount: tasks.length
 				});
@@ -592,10 +677,20 @@ export class MarkdownDataSource implements IDataSource {
 	}
 
 	/**
-	 * 通过任务ID检测变化
+	 * 通过任务ID + 指纹检测变化（字段级 diff）
+	 *
+	 * 旧实现把文件中所有 ID 交集任务一律标记为 updated——
+	 * 编辑含 500 个任务的大文件时，一个字符的修改会触发 500 次
+	 * task:updated 事件与缓存失效（事件风暴）。现在用缓存中的
+	 * 轻量指纹逐任务比对，只有内容/状态/日期真正变化的才进 updated。
 	 */
-	private detectChangesByIds(oldTaskIds: string[], newTasks: GCTask[]): DataSourceChanges | null {
+	private detectChangesByIds(oldCache: MarkdownFileCache | undefined, newTasks: GCTask[]): DataSourceChanges | null {
+		const oldTaskIds = oldCache?.taskIds || [];
+		const oldFingerprints = oldCache?.taskFingerprints;
 		const oldIdSet = new Set(oldTaskIds);
+		const oldFingerprintMap = oldFingerprints
+			? new Map(oldTaskIds.map((id, i) => [id, oldFingerprints[i]]))
+			: undefined;
 		const newIdMap = new Map(newTasks.map(t => [generateTaskId(t), t]));
 
 		const changes: DataSourceChanges = {
@@ -630,11 +725,14 @@ export class MarkdownDataSource implements IDataSource {
 			}
 		}
 
-		// 检测更新：ID 同时存在于新旧列表中的任务视为已更新
-		// 这样可以确保当用户修改任务属性（日期、优先级等）后视图能正确刷新
+		// 检测更新：ID 交集且指纹变化（无指纹缓存时退化为全量 updated，
+		// 与旧行为一致，保证正确性优先）
 		for (const [id, newTask] of newIdMap) {
 			if (oldIdSet.has(id)) {
-				// 任务 ID 存在，将其加入 updated 列表
+				const oldFp = oldFingerprintMap?.get(id);
+				if (oldFingerprintMap && oldFp === fingerprintTask(newTask)) {
+					continue; // 内容未变化，跳过
+				}
 				// 传递完整的新任务对象，让 TaskRepository 可以完全替换缓存中的旧任务
 				changes.updated.push({
 					id,

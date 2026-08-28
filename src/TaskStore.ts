@@ -51,7 +51,11 @@ export class TaskStore {
 
 	// 防抖
 	private updateDebounceTimer: number | null = null;
+	/** 防抖窗口内首次事件的时间戳（maxWait 用） */
+	private updateDebounceFirstAt: number | null = null;
 	private readonly DEBOUNCE_MS = 75;
+	/** 防抖最大等待：连续事件下最迟刷新间隔 */
+	private readonly MAX_WAIT_MS = 500;
 
 	// 重复检查开关
 	private enableDuplicateCheck: boolean = false;
@@ -112,13 +116,28 @@ export class TaskStore {
 
 	/**
 	 * 初始化存储 - 扫描整个笔记库
+	 *
+	 * isInitializing 标志覆盖整个初始化周期（含重试等待），防止设置保存
+	 * 等外部调用在重试窗口内并发触发第二次全量扫描。
 	 */
 	async initialize(globalTaskFilter: string, enabledFormats?: string[], retryCount: number = 0): Promise<void> {
 		if (this.isInitializing) {
 			Logger.debug('TaskStore', 'Already initializing, skipping...');
 			return;
 		}
+		this.isInitializing = true;
+		try {
+			await this.initializeInternal(globalTaskFilter, enabledFormats, retryCount);
+		} finally {
+			this.isInitializing = false;
+		}
+	}
 
+	/**
+	 * 实际初始化流程（含 vault 未就绪重试）。仅由 initialize() 调用，
+	 * 重试走内部递归，不经过外层的并发防护。
+	 */
+	private async initializeInternal(globalTaskFilter: string, enabledFormats?: string[], retryCount: number = 0): Promise<void> {
 		Logger.debug('TaskStore', '===== Starting initialization =====');
 		Logger.debug('TaskStore', 'Config:', {
 			globalTaskFilter,
@@ -126,13 +145,20 @@ export class TaskStore {
 			retryCount
 		});
 
-		this.isInitializing = true;
-		this.globalTaskFilter = (globalTaskFilter || '').trim();
+		const newFilter = (globalTaskFilter || '').trim();
+		const newFormats = (enabledFormats || ['tasks', 'dataview']).join(',');
+		// 配置未变时保留仓库缓存：数据源会按 mtime 跳过未变更文件，
+		// 其任务已在仓库中；清空反而强制全量重扫
+		const configChanged =
+			this.globalTaskFilter !== newFilter || this.enabledFormats.join(',') !== newFormats;
+
+		this.globalTaskFilter = newFilter;
 		this.enabledFormats = enabledFormats || ['tasks', 'dataview'];
 
-		// 【修复】重新初始化前，先清除旧的仓库缓存，防止任务累加
-		this.repository.clear();
-		this.invalidateCache();
+		if (configChanged || !this.isInitialized) {
+			this.repository.clear();
+			this.invalidateCache();
+		}
 
 		const config: DataSourceConfig = {
 			enabled: true,
@@ -148,9 +174,10 @@ export class TaskStore {
 
 		if (markdownFiles.length === 0 && retryCount < 3) {
 			Logger.debug('TaskStore', 'Vault not ready, retrying in 500ms...');
-			this.isInitializing = false;
 			await new Promise(resolve => window.setTimeout(resolve, 500));
-			return this.initialize(globalTaskFilter, enabledFormats, retryCount + 1);
+			// 重试保持内部递归：外层 initialize 的 isInitializing 标志持续生效，
+			// 期间任何并发 initialize() 都会被防护挡下
+			return this.initializeInternal(globalTaskFilter, enabledFormats, retryCount + 1);
 		}
 
 		const scanStartTime = performance.now();
@@ -160,7 +187,6 @@ export class TaskStore {
 		Logger.debug('TaskStore', 'MarkdownDataSource initialized');
 
 		this.isInitialized = true;
-		this.isInitializing = false;
 
 		this.notifyListeners();
 
@@ -237,6 +263,7 @@ export class TaskStore {
 			window.clearTimeout(this.updateDebounceTimer);
 			this.updateDebounceTimer = null;
 		}
+		this.updateDebounceFirstAt = null;
 		// 销毁数据源，移除所有事件监听器
 		this.markdownSource.destroy();
 		this.repository.clear();
@@ -271,14 +298,25 @@ export class TaskStore {
 	 * @param filePath - 变更的文件路径（可选），用于增量更新
 	 */
 	private notifyListenersDebounced(filePath?: string): void {
+		const now = Date.now();
+		// maxWait：纯 trailing 防抖在连续事件下会无限期推迟刷新，
+		// 首次事件后最多 MAX_WAIT_MS 必须冲刷一次
+		if (this.updateDebounceFirstAt === null) {
+			this.updateDebounceFirstAt = now;
+		}
+		const remaining = Math.max(
+			this.DEBOUNCE_MS,
+			this.MAX_WAIT_MS - (now - this.updateDebounceFirstAt)
+		);
+
 		if (this.updateDebounceTimer !== null) {
 			window.clearTimeout(this.updateDebounceTimer);
 		}
-
 		this.updateDebounceTimer = window.setTimeout(() => {
-			this.notifyListeners(filePath);
 			this.updateDebounceTimer = null;
-		}, this.DEBOUNCE_MS);
+			this.updateDebounceFirstAt = null;
+			this.notifyListeners(filePath);
+		}, remaining);
 	}
 
 	/**

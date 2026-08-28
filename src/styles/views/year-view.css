@@ -1,0 +1,26 @@
+/* ==================== 响应式设计 ==================== */
+
+/* 小屏幕适配 */
+@media (max-width: 768px) {
+	.gc-tag {
+		font-size: 10px;
+		padding: 1px 6px;
+	}
+
+	.gc-task-card__tags {
+		gap: 3px;
+	}
+}
+
+/* 月视图小屏幕 - 限制标签显示 */
+.gc-task-card--month .gc-task-card__tags {
+	max-width: 100%;
+	overflow: hidden;
+}
+
+.gc-task-card--month .gc-tag {
+	max-width: 60px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+

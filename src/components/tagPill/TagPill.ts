@@ -34,7 +34,7 @@ export class TagPill {
 		const finalColorIndex = colorIndex ?? this.getColorIndex(label);
 
 		// 创建容器元素
-		const pillEl = activeDocument.createElement('span');
+		const pillEl = createSpan();
 		pillEl.addClass(TagClasses.block);
 		pillEl.addClass(TagClasses.colors[finalColorIndex]);
 
@@ -65,14 +65,14 @@ export class TagPill {
 		}
 
 		// 创建标签文本元素
-		const labelEl = activeDocument.createElement('span');
+		const labelEl = createSpan();
 		labelEl.addClass(TagClasses.elements.label);
 		labelEl.textContent = showHash ? `#${label}` : label;
 		pillEl.appendChild(labelEl);
 
 		// 添加后缀（如数量徽章）
 		if (suffix) {
-			const suffixEl = activeDocument.createElement('span');
+			const suffixEl = createSpan();
 			suffixEl.addClass(TagClasses.elements.suffix);
 			suffixEl.textContent = suffix;
 			pillEl.appendChild(suffixEl);

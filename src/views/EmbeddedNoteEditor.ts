@@ -241,7 +241,7 @@ export class EmbeddedNoteEditor {
     private showEmpty(message: string): void {
         void this.close();
         this.container.empty();
-        this.container.createEl('div', { text: message, cls: 'gantt-task-empty' });
+        this.container.createDiv({ text: message, cls: 'gantt-task-empty' });
     }
 
     /**
@@ -252,7 +252,7 @@ export class EmbeddedNoteEditor {
 
         const content = await this.app.vault.read(file);
         if (!content.trim()) {
-            this.container.createEl('div', { text: i18n.t('common.noContent'), cls: 'gantt-task-empty' });
+            this.container.createDiv({ text: i18n.t('common.noContent'), cls: 'gantt-task-empty' });
             return;
         }
 

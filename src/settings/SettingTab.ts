@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, type IconName } from 'obsidian';
+import { SettingsClasses } from '../utils/bem';
 import type GanttCalendarPlugin from '../../main';
 import { GeneralSettingsBuilder } from './builders/GeneralSettingsBuilder';
 import { CalendarSettingsBuilder } from './builders/CalendarSettingsBuilder';
@@ -37,26 +38,26 @@ export class GanttCalendarSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		// —— Tab 导航栏 ——
-		const tabNav = containerEl.createDiv('gc-settings-tab-nav');
+		const tabNav = containerEl.createDiv(SettingsClasses.elements.tabNav);
 		const tabs = [i18n.t('settings.tabs.general'), i18n.t('settings.tabs.calendar'), i18n.t('settings.tabs.views'), i18n.t('settings.tabs.tasks'), i18n.t('settings.tabs.sync')];
 		const contentContainers: HTMLElement[] = [];
 
 		tabs.forEach((name, i) => {
 			const btn = tabNav.createEl('button', {
 				text: name,
-				cls: 'gc-settings-tab-button',
+				cls: SettingsClasses.elements.tabButton,
 			});
 			if (i === this.activeTabIndex) {
-				btn.addClass('gc-settings-tab-button--active');
+				btn.addClass(`${SettingsClasses.elements.tabButton}--active`);
 			}
 			btn.addEventListener('click', () => {
 				this.activeTabIndex = i;
 				this.display();
 			});
 
-			const content = containerEl.createDiv('gc-settings-tab-content');
+			const content = containerEl.createDiv(SettingsClasses.elements.tabContent);
 			if (i === this.activeTabIndex) {
-				content.addClass('gc-settings-tab-content--active');
+				content.addClass(`${SettingsClasses.elements.tabContent}--active`);
 			}
 			contentContainers.push(content);
 		});

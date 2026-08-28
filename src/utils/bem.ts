@@ -29,6 +29,8 @@ export const BLOCKS = {
 	MONTH_VIEW: 'month-view',
 	/** 年视图 */
 	YEAR_VIEW: 'year-view',
+	/** 任务视图 */
+	TASK_VIEW: 'task-view',
 	/** 甘特图 */
 	GANTT: 'gantt-view',
 
@@ -83,6 +85,12 @@ export const BLOCKS = {
 	/** 同步设置 */
 	SYNC_HINT: 'sync-hint',
 	SYNC_TASKLIST: 'sync-tasklist',
+	/** 下拉菜单 */
+	DROPDOWN_MENU: 'dropdown-menu',
+	/** React 模态框 */
+	MODAL: 'modal',
+	/** React 右键菜单 */
+	CONTEXT_MENU: 'context-menu',
 } as const;
 
 /**
@@ -202,6 +210,48 @@ export const TooltipClasses = {
 			propertyValueOverdue: bem(BLOCKS.TASK_TOOLTIP, 'property-value', 'overdue'),
 		},
 	};
+
+/**
+ * 下拉菜单类名常量（React DropdownMenu 组件）
+ */
+export const DropdownMenuClasses = {
+	container: bem(BLOCKS.DROPDOWN_MENU),
+	section: bem(BLOCKS.DROPDOWN_MENU, 'section'),
+	header: bem(BLOCKS.DROPDOWN_MENU, 'header'),
+	empty: bem(BLOCKS.DROPDOWN_MENU, 'empty'),
+	item: bem(BLOCKS.DROPDOWN_MENU, 'item'),
+	itemChecked: bem(BLOCKS.DROPDOWN_MENU, 'item', 'checked'),
+	itemDisabled: bem(BLOCKS.DROPDOWN_MENU, 'item', 'disabled'),
+	itemIcon: bem(BLOCKS.DROPDOWN_MENU, 'item-icon'),
+	itemLabel: bem(BLOCKS.DROPDOWN_MENU, 'item-label'),
+	itemCheck: bem(BLOCKS.DROPDOWN_MENU, 'item-check'),
+};
+
+/**
+ * React 模态框类名常量
+ */
+export const ModalClasses = {
+	host: bem(BLOCKS.MODAL, 'host'),
+	entry: bem(BLOCKS.MODAL, 'entry'),
+	overlay: bem(BLOCKS.MODAL, 'overlay'),
+	panel: bem(BLOCKS.MODAL, 'panel'),
+	header: bem(BLOCKS.MODAL, 'header'),
+	title: bem(BLOCKS.MODAL, 'title'),
+	closeBtn: bem(BLOCKS.MODAL, 'close-btn'),
+	content: bem(BLOCKS.MODAL, 'content'),
+};
+
+/**
+ * React 右键菜单类名常量
+ */
+export const ContextMenuClasses = {
+	container: bem(BLOCKS.CONTEXT_MENU),
+	section: bem(BLOCKS.CONTEXT_MENU, 'section'),
+	item: bem(BLOCKS.CONTEXT_MENU, 'item'),
+	itemDisabled: bem(BLOCKS.CONTEXT_MENU, 'item', 'disabled'),
+	itemIcon: bem(BLOCKS.CONTEXT_MENU, 'item-icon'),
+	itemLabel: bem(BLOCKS.CONTEXT_MENU, 'item-label'),
+};
 
 /**
  * 标签类名常量
@@ -366,8 +416,15 @@ export const GanttClasses = {
 		tasklistContainer: bem(BLOCKS.GANTT, 'tasklist-container'),
 		chartContainer: bem(BLOCKS.GANTT, 'chart-container'),
 		stickyHeader: bem(BLOCKS.GANTT, 'sticky-header'),
+		leadBar: bem(BLOCKS.GANTT, 'lead-bar'),
 		handleLeft: bem(BLOCKS.GANTT, 'handle-left'),
 		handleRight: bem(BLOCKS.GANTT, 'handle-right'),
+		emptyState: 'gantt-empty-state',
+		emptyIcon: 'gantt-empty-icon',
+		emptyTitle: 'gantt-empty-title',
+		emptyReason: 'gantt-empty-reason',
+		emptyHint: 'gantt-empty-hint',
+		error: 'gantt-error',
 	},
 
 	/** Modifiers */
@@ -765,6 +822,17 @@ export const WeekViewClasses = {
 		timeline: bem(BLOCKS.WEEK_VIEW, undefined, 'timeline'),
 		dragOver: bem(BLOCKS.WEEK_VIEW, 'row', 'drag-over'),
 			alldayDragOver: bem(BLOCKS.WEEK_VIEW, 'allday-slot', 'drag-over'),
+	},
+};
+
+/**
+ * 任务视图类名常量
+ */
+export const TaskViewClasses = {
+	block: bem(BLOCKS.TASK_VIEW),
+
+	elements: {
+		empty: 'gantt-task-empty',
 	},
 };
 

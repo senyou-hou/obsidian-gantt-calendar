@@ -1,0 +1,150 @@
+import { Fragment, useMemo, type JSX } from 'react';
+import type { App } from 'obsidian';
+import { Notice } from 'obsidian';
+import { RegularExpressions } from '../../utils/RegularExpressions';
+import { LinkClasses } from '../../utils/bem';
+import { i18n } from '../../i18n/i18n';
+import { openFileInExistingLeaf } from '../../utils/fileOpener';
+
+export interface LinkSegment {
+	type: 'obsidian' | 'markdown' | 'url';
+	text: string;
+	href: string;
+	title: string;
+}
+
+export type DescriptionSegment = { text: string } | LinkSegment;
+
+/**
+ * 从任务描述文本中解析出纯文本段和链接段
+ * 与 LinkRenderer.renderTaskDescriptionWithLinks 逻辑保持一致
+ */
+export function parseDescriptionSegments(text: string): DescriptionSegment[] {
+	const obsidianLinkRegex = RegularExpressions.Links.obsidianLinkRegex;
+	const markdownLinkRegex = RegularExpressions.Links.markdownLinkRegex;
+	const urlRegex = RegularExpressions.Links.urlLinkRegex;
+
+	const matches: Array<{ type: LinkSegment['type']; start: number; end: number; groups: RegExpExecArray }> = [];
+	let match: RegExpExecArray | null;
+
+	while ((match = obsidianLinkRegex.exec(text)) !== null) {
+		matches.push({ type: 'obsidian', start: match.index, end: match.index + match[0].length, groups: match });
+	}
+	while ((match = markdownLinkRegex.exec(text)) !== null) {
+		matches.push({ type: 'markdown', start: match.index, end: match.index + match[0].length, groups: match });
+	}
+	while ((match = urlRegex.exec(text)) !== null) {
+		matches.push({ type: 'url', start: match.index, end: match.index + match[0].length, groups: match });
+	}
+
+	matches.sort((a, b) => a.start - b.start);
+	const unique: typeof matches = [];
+	let lastEnd = 0;
+	for (const m of matches) {
+		if (m.start >= lastEnd) {
+			unique.push(m);
+			lastEnd = m.end;
+		}
+	}
+
+	const segments: DescriptionSegment[] = [];
+	let lastIndex = 0;
+	const safeSchemes = ['http:', 'https:', 'mailto:', 'tel:', 'app:'];
+
+	for (const m of unique) {
+		if (m.start > lastIndex) {
+			segments.push({ text: text.substring(lastIndex, m.start) });
+		}
+
+		if (m.type === 'obsidian') {
+			const notePath = m.groups[1];
+			const displayText = m.groups[2] || notePath;
+			segments.push({
+				type: 'obsidian',
+				text: displayText,
+				href: notePath,
+				title: `${i18n.t('common.open')}: ${notePath}`,
+			});
+		} else if (m.type === 'markdown') {
+			const displayText = m.groups[1];
+			const url = m.groups[2];
+			try {
+				const parsed = new URL(url);
+				if (!safeSchemes.includes(parsed.protocol)) {
+					lastIndex = m.end;
+					continue;
+				}
+			} catch {
+				lastIndex = m.end;
+				continue;
+			}
+			segments.push({ type: 'markdown', text: displayText, href: url, title: url });
+		} else if (m.type === 'url') {
+			const url = m.groups[1];
+			segments.push({ type: 'url', text: url, href: url, title: url });
+		}
+
+		lastIndex = m.end;
+	}
+
+	if (lastIndex < text.length) {
+		segments.push({ text: text.substring(lastIndex) });
+	}
+
+	return segments;
+}
+
+/**
+ * React 富文本描述组件：渲染任务描述中的可点击链接
+ */
+export function DescriptionWithLinks({ text, app }: { text: string; app: App }): JSX.Element {
+	const segments = useMemo(() => parseDescriptionSegments(text), [text]);
+
+	return (
+		<Fragment>
+			{segments.map((seg, i) => {
+				if ('text' in seg) {
+					return <Fragment key={i}>{seg.text}</Fragment>;
+				}
+				const link = seg as LinkSegment;
+				if (link.type === 'obsidian') {
+					return (
+						<a
+							key={i}
+							className={LinkClasses.modifiers.obsidian}
+							href="javascript:void(0)"
+							title={link.title}
+							onClick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								void (async () => {
+									const file = app.metadataCache.getFirstLinkpathDest(link.href, '');
+									if (file) {
+										await openFileInExistingLeaf(app, file.path, 0);
+									} else {
+										new Notice(i18n.t('common.fileNotFound', { path: link.href }));
+									}
+								})();
+							}}
+						>
+							{link.text}
+						</a>
+					);
+				}
+				return (
+					<a
+						key={i}
+						className={link.type === 'markdown' ? LinkClasses.modifiers.markdown : LinkClasses.modifiers.url}
+						href={link.href}
+						target="_blank"
+						rel="noopener noreferrer"
+						title={link.title}
+						onClick={(e) => e.stopPropagation()}
+					>
+						{link.text}
+					</a>
+				);
+			})}
+		</Fragment>
+	);
+}

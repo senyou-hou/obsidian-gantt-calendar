@@ -18,11 +18,14 @@
 	"devDependencies": {
 		"@types/jest": "^30.0.0",
 		"@types/node": "^16.11.6",
+		"@types/react": "^19.2.18",
+		"@types/react-dom": "^19.2.4",
 		"@types/uuid": "^9.0.0",
 		"esbuild": "0.17.3",
 		"eslint": "^9.39.4",
-		"eslint-plugin-obsidianmd": "^0.3.0",
+		"eslint-plugin-obsidianmd": "^0.4.2",
 		"jest": "^30.4.0",
+		"jest-environment-jsdom": "^30.4.1",
 		"obsidian": "latest",
 		"ts-jest": "^29.4.9",
 		"tslib": "2.4.0",
@@ -31,8 +34,12 @@
 	},
 	"dependencies": {
 		"flatpickr": "^4.6.13",
+		"motion": "^13.1.1",
 		"obsidian-daily-notes-interface": "^0.9.4",
-		"uuid": "^9.0.0"
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8",
+		"uuid": "^9.0.0",
+		"zustand": "^5.0.14"
 	},
 	"overrides": {
 		"obsidian-daily-notes-interface": {

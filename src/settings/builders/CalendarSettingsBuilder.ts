@@ -1,4 +1,5 @@
 import { Setting, SettingGroup } from 'obsidian';
+import { SettingsClasses } from '../../utils/bem';
 import { BaseBuilder } from './BaseBuilder';
 import { FolderSuggest, FileSuggest } from '../components';
 import type { BuilderConfig } from '../types';
@@ -29,8 +30,8 @@ export class CalendarSettingsBuilder extends BaseBuilder {
 			const manualSection = this.containerEl.createDiv();
 
 			const updateVisibility = () => {
-				obsidianSection.classList.toggle('gc-settings-section-hidden', !this.plugin.settings.followObsidianDailyNote);
-				manualSection.classList.toggle('gc-settings-section-hidden', this.plugin.settings.followObsidianDailyNote);
+				obsidianSection.classList.toggle(SettingsClasses.elements.sectionHidden, !this.plugin.settings.followObsidianDailyNote);
+				manualSection.classList.toggle(SettingsClasses.elements.sectionHidden, this.plugin.settings.followObsidianDailyNote);
 			};
 
 			// 使用 Obsidian 日记设置开关

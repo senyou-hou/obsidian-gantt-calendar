@@ -1,0 +1,20 @@
+/* Gantt Calendar Plugin - CSS 入口（源码模块化，构建合并为单文件 styles.css） */
+@import "vendor/flatpickr.css";
+@import "tokens.css";
+@import "base.css";
+@import "components/toolbar.css";
+@import "components/task-card.css";
+@import "views/year-view.css";
+@import "views/month-view.css";
+@import "components/tooltip.css";
+@import "views/week-view.css";
+@import "views/day-view.css";
+@import "components/editor.css";
+@import "components/heatmap.css";
+@import "settings.css";
+@import "theme.css";
+@import "views/gantt.css";
+@import "components/sidebar.css";
+@import "utilities.css";
+@import "components/react-base.css";
+@import "components/edit-task-modal.css";
