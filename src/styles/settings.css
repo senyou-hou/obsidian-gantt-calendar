@@ -50,56 +50,12 @@
 	margin-top: var(--size-4-4);
 }
 
+/* 通用设置/日历设置中可切换的子区域（如 Obsidian DailyNote 模式/手动模式） */
+.gc-settings__section-hidden {
+	display: none;
+}
+
 /* ========================================
-   Settings Groups 兜底样式（Obsidian 1.13+）
-   官方分组卡片外观挂在 .setting-group .setting-items 上，
-   依赖 body 级 --setting-items-* 变量；在自定义 Tab 容器中
-   可能因主题/版本/变量未定义而失效。
-   此处以高特异性 + 明确颜色值兜底，不依赖变量。
+   Settings: Sync (设置页: 飞书同步)
    ======================================== */
-
-.gc-settings__tab-content .setting-group {
-	margin-top: var(--size-4-6);
-}
-
-.gc-settings__tab-content .setting-group .setting-item-heading {
-	padding: 0 var(--size-4-4);
-	background-color: transparent;
-	color: var(--text-normal);
-	font-size: var(--font-ui-medium);
-	font-weight: 600;
-	margin-bottom: var(--size-4-4);
-}
-
-.gc-settings__tab-content .setting-group .setting-items {
-	/* 官方卡片背景色：obsidian light 用 #f5f5f5、dark 用 #2d2d2d；
-	   Obsidian 用 --background-primary-alt，我们直接用官方等效变量并带硬编码回退 */
-	background-color: var(--background-primary-alt, #f5f5f5);
-	padding: 12px 16px;
-	border-radius: 10px;
-	/* 官方默认无边框，仅靠背景色区分 */
-	border: 1px solid var(--background-modifier-border);
-}
-
-.theme-dark .gc-settings__tab-content .setting-group .setting-items {
-	background-color: var(--background-primary-alt, #2d2d2d);
-}
-
-.gc-settings__tab-content .setting-group .setting-item {
-	border: none;
-	border-top: 1px solid var(--background-modifier-border);
-	background-color: transparent;
-	border-radius: 0;
-	padding: 8px 0;
-	margin-bottom: 0;
-}
-
-.gc-settings__tab-content .setting-group .setting-item:first-child {
-	padding-top: 0;
-	border-top: none;
-}
-
-.gc-settings__tab-content .setting-group .setting-item:last-child {
-	padding-bottom: 0;
-}
  
