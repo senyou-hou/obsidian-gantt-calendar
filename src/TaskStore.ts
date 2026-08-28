@@ -43,6 +43,9 @@ export class TaskStore {
 	private enabledFormats: string[] = ['tasks', 'dataview'];
 	private isInitialized: boolean = false;
 	private isInitializing: boolean = false;
+	/** 初始化完成门闩：whenReady() 等待此 Promise（initPromise 实现） */
+	private initResolve: (() => void) | null = null;
+	private initPromise: Promise<void> | null = null;
 	private updateListeners: Set<TaskStoreUpdateListener> = new Set();
 
 	// 结果缓存
@@ -62,6 +65,7 @@ export class TaskStore {
 
 	constructor(app: App) {
 		this.app = app;
+		this.createInitGate();
 		this.eventBus = new EventBus();
 		this.repository = new TaskRepository(this.eventBus);
 
@@ -115,6 +119,22 @@ export class TaskStore {
 	}
 
 	/**
+	 * 等待任务缓存初始化完成。视图 onOpen 时 await 此方法，
+	 * 保证首屏渲染时任务数据已就绪（实现 types.ts 声明的接口契约）。
+	 * 已完成初始化时立即返回；失败时随 initialize 的失败而 reject。
+	 */
+	async whenReady(): Promise<void> {
+		await this.initPromise;
+	}
+
+	/** 创建新的初始化门闩（constructor 与每次重新 initialize 时调用） */
+	private createInitGate(): void {
+		this.initPromise = new Promise<void>((resolve) => {
+			this.initResolve = resolve;
+		});
+	}
+
+	/**
 	 * 初始化存储 - 扫描整个笔记库
 	 *
 	 * isInitializing 标志覆盖整个初始化周期（含重试等待），防止设置保存
@@ -123,7 +143,9 @@ export class TaskStore {
 	async initialize(globalTaskFilter: string, enabledFormats?: string[], retryCount: number = 0): Promise<void> {
 		if (this.isInitializing) {
 			Logger.debug('TaskStore', 'Already initializing, skipping...');
-			return;
+			// 并发调用者等待同一个门闩，而非直接返回——
+			// 保证调用方 await 后数据已就绪
+			return this.whenReady();
 		}
 		this.isInitializing = true;
 		try {
@@ -187,6 +209,9 @@ export class TaskStore {
 		Logger.debug('TaskStore', 'MarkdownDataSource initialized');
 
 		this.isInitialized = true;
+		// 结算门闩：唤醒所有 whenReady 等待者
+		this.initResolve?.();
+		this.initResolve = null;
 
 		this.notifyListeners();
 
@@ -268,6 +293,8 @@ export class TaskStore {
 		this.markdownSource.destroy();
 		this.repository.clear();
 		this.isInitialized = false;
+		// 重开门闩：下一次 initialize 完成前 whenReady 应继续等待
+		this.createInitGate();
 		Logger.debug('TaskStore', 'Cache cleared');
 	}
 
