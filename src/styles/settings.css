@@ -51,6 +51,52 @@
 }
 
 /* ========================================
+   Settings Groups 兜底样式（Obsidian 1.13+）
+   官方分组卡片外观挂在 .setting-group .setting-items 上，
+   依赖 body 级 CSS 变量；在自定义 Tab 容器中可能因主题/版本
+   差异失效。此处以自有选择器提供稳定的分组视觉兜底，
+   不覆盖官方变量，主题仍可正常定制。
+   ======================================== */
+
+.gc-settings-tab-content .setting-group {
+	margin-top: var(--size-4-6);
+}
+
+.gc-settings-tab-content .setting-group .setting-item-heading {
+	padding: 0 var(--size-4-4);
+	background-color: transparent;
+	color: var(--setting-group-heading-color, var(--text-normal));
+	font-size: var(--setting-group-heading-size, var(--font-ui-medium));
+	font-weight: var(--setting-group-heading-weight, var(--font-semibold));
+	margin-bottom: var(--size-4-4);
+}
+
+.gc-settings-tab-content .setting-group .setting-items {
+	background-color: var(--setting-items-background, var(--background-primary-alt));
+	padding: var(--setting-items-padding, var(--size-4-5));
+	border-radius: var(--setting-items-radius, var(--radius-l));
+	border: var(--setting-items-border-width, 0) solid var(--setting-items-border-color, var(--background-modifier-border));
+}
+
+.gc-settings-tab-content .setting-group .setting-item {
+	border: none;
+	border-top: var(--border-width, 1px) solid var(--background-modifier-border);
+	background-color: transparent;
+	border-radius: 0;
+	padding: var(--size-4-4) 0;
+	margin-bottom: 0;
+}
+
+.gc-settings-tab-content .setting-group .setting-item:first-child {
+	padding-top: 0;
+	border-top: none;
+}
+
+.gc-settings-tab-content .setting-group .setting-item:last-child {
+	padding-bottom: 0;
+}
+
+/* ========================================
    Settings: Sync (设置页: 飞书同步)
    ======================================== */
 
