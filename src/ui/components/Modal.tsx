@@ -41,16 +41,24 @@ export function Modal({
 	useEffect(() => {
 		if (!open) return;
 		// 焦点管理：打开时记录来源并聚焦面板（键盘用户可直接 Tab 操作），
-		// 关闭后把焦点归还触发元素
+		// 关闭后把焦点归还触发元素。
+		// 只依赖 open——若依赖 onClose（父组件每次渲染重建的回调），
+		// 受控输入每次按键都会触发本 effect 重跑，焦点被抢回面板
 		const previouslyFocused = document.activeElement as HTMLElement | null;
 		panelRef.current?.focus();
+		return () => {
+			previouslyFocused?.focus?.();
+		};
+	}, [open]);
+
+	useEffect(() => {
+		if (!open) return;
 		const handleKeydown = (e: KeyboardEvent) => {
 			if (e.key === 'Escape' && closeOnEsc) onClose();
 		};
 		document.addEventListener('keydown', handleKeydown);
 		return () => {
 			document.removeEventListener('keydown', handleKeydown);
-			previouslyFocused?.focus?.();
 		};
 	}, [open, closeOnEsc, onClose]);
 
