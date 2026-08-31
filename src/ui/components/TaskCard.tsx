@@ -33,6 +33,8 @@ export interface ReactTaskCardProps {
 	targetDate?: Date;
 	onClick?: (task: GCTask) => void;
 	onRefresh?: () => void;
+	/** 追加到卡片根元素的行内样式（如周视图时间轴贴片的定位偏移） */
+	style?: CSSProperties;
 }
 
 const PRIORITY_ICONS: Record<string, string> = {
@@ -65,7 +67,7 @@ function formatDateForDisplay(date: Date, precision?: 'day' | 'time'): string {
 // memo：tasks 数组引用每次刷新都会变化，但未变化的任务卡片
 //（props 中 task/config/回调均稳定）应跳过重渲染——
 // 调用方需用 useCallback 稳定 onRefresh，否则 memo 无效
-export const TaskCard = memo(function TaskCard({ task, config, targetDate, onClick, onRefresh }: ReactTaskCardProps): JSX.Element {
+export const TaskCard = memo(function TaskCard({ task, config, targetDate, onClick, onRefresh, style: extraStyle }: ReactTaskCardProps): JSX.Element {
 	const plugin = usePlugin();
 	const app = useApp();
 	const virtual = isVirtualTask(task);
@@ -95,6 +97,11 @@ export const TaskCard = memo(function TaskCard({ task, config, targetDate, onCli
 			'--task-text-color': colors.text,
 		} as CSSProperties;
 	}, [task.status, plugin.settings, task.completed]);
+
+	const mergedStyle = useMemo<CSSProperties | undefined>(() => {
+		if (!style && !extraStyle) return undefined;
+		return { ...style, ...extraStyle };
+	}, [style, extraStyle]);
 
 	// ===== 富文本描述 =====
 	const description = useMemo(() => {
@@ -361,7 +368,7 @@ export const TaskCard = memo(function TaskCard({ task, config, targetDate, onCli
 	const cardContent = (
 		<div
 			className={classes.join(' ')}
-			style={style}
+			style={mergedStyle}
 			draggable={dragProps.draggable}
 			data-task-id={dragProps['data-task-id']}
 			data-target-date={config.enableDrag && targetDate ? toISOStringLocal(targetDate) : undefined}

@@ -11,6 +11,7 @@ import { WeekViewClasses } from '../../utils/bem';
 import { usePlugin, useApp } from '../pluginContext';
 import { useCalendarStore, selectViewFilter } from '../store/calendarStore';
 import { applyStatusFilter, applyTagFilter, applySort } from '../utils/taskFilters';
+import { getTaskTimeWindow, windowCoversDay, computeDaySegment, type TaskTimeWindow, type DaySegment } from '../utils/taskTimeline';
 import { TaskCard } from '../components/TaskCard';
 import { Icon } from '../components/Icon';
 import { updateTaskDateField } from '../../tasks/taskUpdater';
@@ -29,34 +30,34 @@ import { Logger } from '../../utils/logger';
 let weekTimelineActive = false;
 
 /**
- * 检测一周内是否存在带时间精度的任务（用于激活时间轴模式）
+ * 检测一周内是否存在时间窗口触及当周的定时任务（用于激活时间轴模式）
  */
 function hasTimedTasksInRange(allTasks: GCTask[], dateField: DateFieldType, weekStart: Date, weekEnd: Date): boolean {
 	for (const task of allTasks) {
-		const precision = task.datePrecision?.[dateField ];
-		if (precision !== 'time') continue;
-		const dateValue = getTaskDateField(task, dateField );
-		if (!dateValue) continue;
-		const taskDate = new Date(dateValue);
-		if (isNaN(taskDate.getTime())) continue;
-		taskDate.setHours(0, 0, 0, 0);
-		if (taskDate.getTime() >= weekStart.getTime() && taskDate.getTime() <= weekEnd.getTime()) {
-			return true;
+		const win = getTaskTimeWindow(task, dateField);
+		if (!win || win.isAllday) continue;
+		for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+			const day = new Date(weekStart);
+			day.setDate(day.getDate() + dayOffset);
+			if (windowCoversDay(win, day)) return true;
 		}
 	}
 	return false;
 }
 
-/**
- * 判断任务日期是否为某一天的本地零点时间
- */
-function sameDay(task: GCTask, dateField: DateFieldType, normalizedTarget: Date): boolean {
-	const dateValue = getTaskDateField(task, dateField);
-	if (!dateValue) return false;
-	const taskDate = new Date(dateValue);
-	if (isNaN(taskDate.getTime())) return false;
-	taskDate.setHours(0, 0, 0, 0);
-	return taskDate.getTime() === normalizedTarget.getTime();
+/** 时间轴模式下单个定时任务在某一小时的渲染分段 */
+interface TimedSegment {
+	task: GCTask;
+	seg: DaySegment;
+}
+
+/** 汇总任务列表的时间窗口（以任务对象为键，供各 memo 复用） */
+function buildWindowMap(tasks: GCTask[], dateField: DateFieldType): Map<GCTask, TaskTimeWindow | null> {
+	const map = new Map<GCTask, TaskTimeWindow | null>();
+	for (const task of tasks) {
+		map.set(task, getTaskTimeWindow(task, dateField));
+	}
+	return map;
 }
 
 /**
@@ -132,44 +133,53 @@ export function WeekView(): JSX.Element {
 		generateVirtualInstances(scoped, weekStart, weekEnd, dateField, recurringLimit)
 	), [scoped, weekStart, weekEnd, dateField, recurringLimit]);
 
-	// 扁平列表模式：每天的任务集合（真实 + 虚拟，已排序）
+	// 扁平列表模式：每天的任务集合（真实 + 虚拟，已排序，按时间窗口覆盖判断）
 	const flatDayTasks = useMemo(() => {
+		const windows = buildWindowMap([...scoped, ...virtualInstances], dateField);
 		const map = new Map<string, GCTask[]>();
 		for (const day of weekData.days) {
 			const normalized = new Date(day.date);
 			normalized.setHours(0, 0, 0, 0);
-			const real = scoped.filter((t) => sameDay(t, dateField, normalized));
-			const virt = virtualInstances.filter((t) => sameDay(t, dateField, normalized));
-			map.set(toISOStringLocal(day.date), sortTasks([...real, ...virt], filter.sort));
+			const covered = [...scoped, ...virtualInstances].filter((t) => {
+				const win = windows.get(t);
+				return !!win && windowCoversDay(win, normalized);
+			});
+			map.set(toISOStringLocal(day.date), sortTasks(covered, filter.sort));
 		}
 		return map;
 	}, [weekData, scoped, virtualInstances, dateField, filter.sort]);
 
-	// 时间轴模式：每天分离全天任务与按小时的定时任务
+	// 时间轴模式：每天分离全天任务与按窗口裁剪出的定时贴片
 	const timelineDayData = useMemo(() => {
-		const map = new Map<string, { allday: GCTask[]; hours: Map<number, GCTask[]> }>();
+		const windows = buildWindowMap([...scoped, ...virtualInstances], dateField);
+		const map = new Map<string, { allday: GCTask[]; segments: TimedSegment[]; byHour: Map<number, TimedSegment[]> }>();
 		for (const day of weekData.days) {
 			const normalized = new Date(day.date);
 			normalized.setHours(0, 0, 0, 0);
-			const combined = sortTasks([
-				...scoped.filter((t) => sameDay(t, dateField, normalized)),
-				...virtualInstances.filter((t) => sameDay(t, dateField, normalized)),
-			], filter.sort);
+			const combined = [...scoped, ...virtualInstances].filter((t) => {
+				const win = windows.get(t);
+				return !!win && windowCoversDay(win, normalized);
+			});
 			const allday: GCTask[] = [];
-			const hours = new Map<number, GCTask[]>();
-			for (const task of combined) {
-				const precision = task.datePrecision?.[dateField ];
-				if (precision === 'time') {
-					const dateValue = getTaskDateField(task, dateField );
-					const hour = dateValue ? new Date(dateValue).getHours() : 0;
-					const list = hours.get(hour) || [];
-					list.push(task);
-					hours.set(hour, list);
-				} else {
+			const segments: TimedSegment[] = [];
+			for (const task of sortTasks(combined, filter.sort)) {
+				const win = windows.get(task);
+				if (!win) continue;
+				if (win.isAllday) {
 					allday.push(task);
+					continue;
 				}
+				const seg = computeDaySegment(win, normalized);
+				if (seg) segments.push({ task, seg });
 			}
-			map.set(toISOStringLocal(day.date), { allday, hours });
+			segments.sort((a, b) => a.seg.topMinutes - b.seg.topMinutes);
+			const byHour = new Map<number, TimedSegment[]>();
+			for (const item of segments) {
+				const list = byHour.get(item.seg.slotHour) || [];
+				list.push(item);
+				byHour.set(item.seg.slotHour, list);
+			}
+			map.set(toISOStringLocal(day.date), { allday, segments, byHour });
 		}
 		return map;
 	}, [weekData, scoped, virtualInstances, dateField, filter.sort]);
@@ -402,41 +412,59 @@ export function WeekView(): JSX.Element {
 							</div>
 						))}
 
-						{weekData.days.map((day, dayIdx) => (
-							Array.from({ length: 24 }, (_, hour) => {
-								const hourTasks = timelineDayData.get(toISOStringLocal(day.date))?.hours.get(hour) || [];
-								return (
-									<div
-										key={`week-s-${dayIdx}-${hour}`}
-										className={`${WeekViewClasses.elements.timeSlot}${day.isToday ? ` ${WeekViewClasses.modifiers.timeSlotToday}` : ''}${dragRow === hour ? ` ${WeekViewClasses.modifiers.dragOver}` : ''}`}
-										style={{ gridColumn: `${dayIdx + 2}`, gridRow: `${hour + 3}` }}
-										onDragOver={(e) => handleTimeSlotDragOver(e, hour)}
-										onDragLeave={handleTimeSlotDragLeave}
-										onDrop={(e) => void handleTimeSlotDrop(e, day.date, hour)}
-									>
-										<div className={WeekViewClasses.elements.timeTasks}>
-											{hourTasks.map((t) => (
-												<TaskCard
-													key={taskKey(t)}
-													task={t}
-													config={config}
+						{weekData.days.map((day, dayIdx) => {
+							const dayKey = toISOStringLocal(day.date);
+							const dayTimeline = timelineDayData.get(dayKey);
+							return (
+								Array.from({ length: 24 }, (_, hour) => {
+									const hourSegments = dayTimeline?.byHour.get(hour) || [];
+									// 本格是否被其他贴片纵向覆盖（覆盖时隐藏快速创建按钮）
+									const coveredBySegment = !!dayTimeline && dayTimeline.segments.some((s) =>
+										s.seg.slotHour !== hour &&
+										s.seg.topMinutes < (hour + 1) * 60 &&
+										s.seg.bottomMinutes > hour * 60
+									);
+									return (
+										<div
+											key={`week-s-${dayIdx}-${hour}`}
+											className={`${WeekViewClasses.elements.timeSlot}${day.isToday ? ` ${WeekViewClasses.modifiers.timeSlotToday}` : ''}${dragRow === hour ? ` ${WeekViewClasses.modifiers.dragOver}` : ''}`}
+											style={{ gridColumn: `${dayIdx + 2}`, gridRow: `${hour + 3}` }}
+											onDragOver={(e) => handleTimeSlotDragOver(e, hour)}
+											onDragLeave={handleTimeSlotDragLeave}
+											onDrop={(e) => void handleTimeSlotDrop(e, day.date, hour)}
+										>
+											<div className={WeekViewClasses.elements.timeTasks}>
+												{hourSegments.map(({ task, seg }) => (
+													<div
+														key={taskKey(task)}
+														className={WeekViewClasses.elements.timeSpan}
+														style={{
+															marginTop: `calc(var(--gc-tl-slot-h) * ${(seg.offsetMinutes / 60).toFixed(4)})`,
+															height: `calc(var(--gc-tl-slot-h) * ${(seg.durationMinutes / 60).toFixed(4)})`,
+														}}
+													>
+														<TaskCard
+															task={task}
+															config={config}
+															targetDate={day.date}
+															onClick={() => tooltip.hide()}
+															onRefresh={handleCardRefresh}
+														/>
+													</div>
+												))}
+											</div>
+											{hourSegments.length === 0 && !coveredBySegment ? (
+												<SlotCreateButton
+													hour={hour}
 													targetDate={day.date}
-													onClick={() => tooltip.hide()}
-													onRefresh={handleCardRefresh}
+													onSuccess={() => refreshTasks()}
 												/>
-											))}
+											) : null}
 										</div>
-										{hourTasks.length === 0 ? (
-											<SlotCreateButton
-												hour={hour}
-												targetDate={day.date}
-												onSuccess={() => refreshTasks()}
-											/>
-										) : null}
-									</div>
-								);
-							})
-						))}
+									);
+								})
+							);
+						})}
 					</div>
 				) : (
 					<>

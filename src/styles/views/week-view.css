@@ -218,14 +218,15 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* 任务时间格（第 2-8 列，第 2-25 行） */
+/* 任务时间格（第 2-8 列，第 2-25 行）
+   overflow 必须为 visible：跨小时的任务贴片从起始格向下延伸，超出本格边界绘制 */
 .gc-week-view__time-slot {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
 	padding: 0 4px;
 	height: var(--gc-tl-slot-h);
-	overflow: hidden;
+	overflow: visible;
 	border-top: 1px solid var(--background-modifier-border);
 	border-right: 1px solid var(--background-modifier-border);
 	position: relative;
@@ -235,7 +236,19 @@
 	display: flex;
 	flex-direction: column;
 	gap: var(--gc-tl-card-gap);
-	overflow: hidden;
+	overflow: visible;
+}
+
+/* 跨小时贴片宿主：由行内样式按分钟粒度设置 marginTop/height（--gc-tl-slot-h 的分数），
+   z-index 使贴片绘制在后续时间格边框之上 */
+.gc-week-view__time-span {
+	position: relative;
+	z-index: 2;
+	min-height: var(--gc-tl-card-h);
+}
+
+.gc-week-view__time-span .gc-task-card {
+	height: 100%;
 }
 
 .gc-week-view__row--drag-over {

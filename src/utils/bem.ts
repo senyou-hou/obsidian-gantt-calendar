@@ -805,6 +805,7 @@ export const WeekViewClasses = {
 		timeGutterLabel: bem(BLOCKS.WEEK_VIEW, 'time-gutter-label'),
 		timeSlot: bem(BLOCKS.WEEK_VIEW, 'time-slot'),
 		timeTasks: bem(BLOCKS.WEEK_VIEW, 'time-tasks'),
+		timeSpan: bem(BLOCKS.WEEK_VIEW, 'time-span'),
 			// 全天任务行
 			alldayGutter: bem(BLOCKS.WEEK_VIEW, 'allday-gutter'),
 			alldaySlot: bem(BLOCKS.WEEK_VIEW, 'allday-slot'),
