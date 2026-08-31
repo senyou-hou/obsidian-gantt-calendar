@@ -83,7 +83,7 @@
 	}
 	/* 双类选择器（0-2-0）压过 .priority-btn:hover（同为 0-2-0 且本规则在后），
 	   替代原先的 4 个 !important */
-	.gc-edit-task-modal__priority-btn.gc-edit-task-modal__priority-btn-selected {
+	.gc-edit-task-modal__priority-btn.gc-edit-task-modal__priority-btn--selected {
 		background: var(--background-modifier-hover);
 		color: var(--text-normal);
 		border-color: transparent;
