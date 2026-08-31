@@ -127,27 +127,49 @@ describe('computeDaySegment - 单日贴片定位（bug1）', () => {
 		expect(seg.isSpanning).toBe(true);
 	});
 
-	it('跨日任务首日：从 09:00 到当日结束', () => {
+	it('跨日任务每天重复同时段窗口：首日 09:00→12:00', () => {
 		const win = getTaskTimeWindow(makeTask('- [ ] 跨周任务 🛫 2026-08-31 09:00 📅 2026-09-02 12:00'), 'dueDate' as DateFieldType)!;
 		const seg = computeDaySegment(win, day(2026, 8, 31))!;
 		expect(seg.topMinutes).toBe(540);
-		expect(seg.bottomMinutes).toBe(1440);
-		expect(seg.durationMinutes).toBe(900);
+		expect(seg.bottomMinutes).toBe(720);
+		expect(seg.durationMinutes).toBe(180);
 	});
 
-	it('跨日任务中间日：整天贴片', () => {
+	it('跨日任务中间日：重复同时段窗口而非整天', () => {
 		const win = getTaskTimeWindow(makeTask('- [ ] 跨周任务 🛫 2026-08-31 09:00 📅 2026-09-02 12:00'), 'dueDate' as DateFieldType)!;
 		const seg = computeDaySegment(win, day(2026, 9, 1))!;
-		expect(seg.topMinutes).toBe(0);
-		expect(seg.bottomMinutes).toBe(1440);
-		expect(seg.slotHour).toBe(0);
+		expect(seg.topMinutes).toBe(540);
+		expect(seg.bottomMinutes).toBe(720);
 	});
 
-	it('跨日任务末日：从当日开始到截止 12:00', () => {
+	it('跨日任务末日：重复同时段窗口 09:00→12:00', () => {
 		const win = getTaskTimeWindow(makeTask('- [ ] 跨周任务 🛫 2026-08-31 09:00 📅 2026-09-02 12:00'), 'dueDate' as DateFieldType)!;
 		const seg = computeDaySegment(win, day(2026, 9, 2))!;
-		expect(seg.topMinutes).toBe(0);
+		expect(seg.topMinutes).toBe(540);
 		expect(seg.bottomMinutes).toBe(720);
+	});
+
+	it('用户场景：08-30 06:15 → 09-03 07:45，每天重复 06:15-07:45', () => {
+		const win = getTaskTimeWindow(makeTask('- [ ] 跨天任务 🛫 2026-08-30 06:15 📅 2026-09-03 07:45'), 'dueDate' as DateFieldType)!;
+		const coveredDays = [day(2026, 8, 30), day(2026, 8, 31), day(2026, 9, 1), day(2026, 9, 2), day(2026, 9, 3)];
+		for (const d of coveredDays) {
+			const seg = computeDaySegment(win, d)!;
+			expect(seg.topMinutes).toBe(375);
+			expect(seg.bottomMinutes).toBe(465);
+			expect(seg.durationMinutes).toBe(90);
+		}
+		expect(computeDaySegment(win, day(2026, 8, 29))).toBeNull();
+		expect(computeDaySegment(win, day(2026, 9, 4))).toBeNull();
+	});
+
+	it('截止为日精度的跨日任务：保留连续覆盖（首日 09:00 到午夜）', () => {
+		const win = getTaskTimeWindow(makeTask('- [ ] 混合精度 🛫 2026-08-31 09:00 📅 2026-09-01'), 'dueDate' as DateFieldType)!;
+		const seg = computeDaySegment(win, day(2026, 8, 31))!;
+		expect(seg.topMinutes).toBe(540);
+		expect(seg.bottomMinutes).toBe(1440);
+		const lastDaySeg = computeDaySegment(win, day(2026, 9, 1))!;
+		expect(lastDaySeg.topMinutes).toBe(0);
+		expect(lastDaySeg.bottomMinutes).toBe(1440);
 	});
 
 	it('全天任务不产生定时贴片（走全天行）', () => {

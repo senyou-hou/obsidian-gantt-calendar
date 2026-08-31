@@ -4,9 +4,11 @@
  * 任务在周视图中的显示窗口由开始（startDate，缺省回退到锚点字段）与
  * 截止（dueDate，缺省回退到锚点字段）构成：
  * - 覆盖判断（windowCoversDay）：窗口触及的每一天都应显示该任务
- * - 贴片定位（computeDaySegment）：把窗口裁剪到单日，得到分钟级的贴片位置
+ * - 贴片定位（computeDaySegment）：把窗口映射到单日，得到分钟级的贴片位置
  *   （slotHour 起始小时格 / offsetMinutes 格内偏移 / durationMinutes 跨度），
  *   支持任意分钟粒度（含 5 分钟）
+ * - 跨多天语义：双端均带时刻的任务每天重复相同时刻窗口（如每天 06:15-07:45）；
+ *   任一端为日精度（或跨午夜任务）则连续覆盖（首日到午夜、中间全天、末日到截止）
  */
 import type { GCTask } from '../../types';
 import { getTaskDateField } from '../../types';
@@ -111,12 +113,26 @@ export function computeDaySegment(win: TaskTimeWindow, day: Date): DaySegment | 
 	const endMs = win.end.getTime();
 	if (startMs >= dayEnd || endMs <= dayStart) return null;
 
+	// 双端均带时刻的跨多天任务：每天重复相同时刻窗口（如 06:15-07:45），
+	// 而非首日到午夜、中间全天的连续跨越
+	if (win.startTimed && win.endTimed) {
+		const startTOD = Math.round((startMs - startOfDayMs(win.start)) / 60000);
+		const endTOD = Math.round((endMs - startOfDayMs(win.end)) / 60000);
+		if (endTOD > startTOD) {
+			return buildSegment(startTOD, endTOD);
+		}
+		// 结束时刻 <= 开始时刻（跨午夜任务）：退回连续覆盖语义
+	}
+
 	const topMinutes = Math.round((Math.max(startMs, dayStart) - dayStart) / 60000);
 	const bottomMinutes = Math.round((Math.min(endMs, dayEnd) - dayStart) / 60000);
+	return buildSegment(topMinutes, bottomMinutes);
+}
+
+function buildSegment(topMinutes: number, bottomMinutes: number): DaySegment {
 	const slotHour = Math.floor(topMinutes / MINUTES_PER_HOUR);
 	const offsetMinutes = topMinutes - slotHour * MINUTES_PER_HOUR;
 	const durationMinutes = Math.max(bottomMinutes - topMinutes, 1);
 	const isSpanning = bottomMinutes > (slotHour + 1) * MINUTES_PER_HOUR;
-
 	return { topMinutes, bottomMinutes, slotHour, offsetMinutes, durationMinutes, isSpanning };
 }
