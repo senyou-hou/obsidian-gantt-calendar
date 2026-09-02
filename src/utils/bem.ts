@@ -865,6 +865,7 @@ export const SidebarClasses = {
 		timelineTimeSlot: bem(BLOCKS.SIDEBAR, 'timeline-time-slot'),
 		timelineTimeLabel: bem(BLOCKS.SIDEBAR, 'timeline-time-label'),
 		timelineTimeTasks: bem(BLOCKS.SIDEBAR, 'timeline-time-tasks'),
+		timelineTimeSpan: bem(BLOCKS.SIDEBAR, 'timeline-time-span'),
 		timelineSlotCreate: bem(BLOCKS.SIDEBAR, 'timeline-slot-create'),
 		timelineCurrentTime: bem(BLOCKS.SIDEBAR, 'timeline-current-time'),
 		// 下拉菜单

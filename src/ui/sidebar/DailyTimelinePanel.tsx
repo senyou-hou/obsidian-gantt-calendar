@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { Notice } from 'obsidian';
 import type { GCTask } from '../../types';
+import type { DateFieldType } from '../../settings/types';
 import { i18n } from '../../i18n/i18n';
 import { SidebarClasses } from '../../utils/bem';
 import { buildSidebarConfig } from '../../components/TaskCard';
@@ -13,26 +14,16 @@ import { Logger } from '../../utils/logger';
 import { usePlugin, useApp } from '../pluginContext';
 import { useCalendarStore } from '../store/calendarStore';
 import { useDropTarget } from '../utils/useDragAndDrop';
+import { getTaskTimeWindow, windowCoversDay, computeDaySegment, type TimedTaskSegment } from '../utils/taskTimeline';
 import { TaskCard } from '../components/TaskCard';
 import { Icon } from '../components/Icon';
 
 const TIMELINE_SLOT_CLASS = SidebarClasses.elements.timelineTimeSlot;
 const TIMELINE_CURRENT_TIME_CLASS = SidebarClasses.elements.timelineCurrentTime;
 
-function getDatePrecision(task: GCTask): 'day' | 'time' {
-	return task.datePrecision?.dueDate === 'time' ? 'time' : 'day';
-}
-
-function getTaskTime(task: GCTask): number | null {
-	if (task.dueDate && task.datePrecision?.dueDate === 'time') {
-		return task.dueDate.getHours() * 60 + task.dueDate.getMinutes();
-	}
-	return null;
-}
-
 /**
- * 侧边栏 — 今日时间线 Tab（React 版）
- * 全天区域 + 24 小时格，支持拖放改期/改时间、空槽点击创建任务
+ * 侧边�?�?今日时间�?Tab（React 版）
+ * 全天区域 + 24 小时格，支持拖放改期/改时间、空槽点击创建任�?
  */
 export function DailyTimelinePanel(): JSX.Element {
 	const plugin = usePlugin();
@@ -42,48 +33,41 @@ export function DailyTimelinePanel(): JSX.Element {
 	const today = useMemo(() => getTodayInTimezone(), []);
 	const allTasks = tasks;
 	const config = useMemo(() => buildSidebarConfig(plugin.settings), [plugin.settings]);
+	const dateField: DateFieldType = plugin.settings.dateFilterField || 'dueDate';
 
-	// 今天的任务（未取消 + dueDate 今天）
+	// 今天的时间窗口任务（未取�?+ [开�? 截止] 覆盖今日�?
 	const todayTasks = useMemo(
-		() => allTasks.filter(t => !t.cancelled && t.dueDate && isTodayInTimezone(t.dueDate)),
-		[allTasks]
+		() => allTasks.filter(t => {
+			if (t.cancelled) return false;
+			const win = getTaskTimeWindow(t, dateField);
+			return !!win && windowCoversDay(win, today);
+		}),
+		[allTasks, dateField, today]
 	);
 
-	const { allDayTasks, timedTasks } = useMemo(() => {
+	// 全天任务 + 按当日裁剪出的分钟级贴片
+	const timelineData = useMemo(() => {
 		const allDay: GCTask[] = [];
-		const timed: GCTask[] = [];
+		const segments: TimedTaskSegment[] = [];
 		for (const task of todayTasks) {
-			if (getDatePrecision(task) === 'time') {
-				timed.push(task);
-			} else {
+			const win = getTaskTimeWindow(task, dateField);
+			if (!win || !windowCoversDay(win, today)) continue;
+			if (win.isAllday) {
 				allDay.push(task);
+				continue;
 			}
+			const seg = computeDaySegment(win, today);
+			if (seg) segments.push({ task, seg });
 		}
-		timed.sort((a, b) => {
-			const timeA = getTaskTime(a);
-			const timeB = getTaskTime(b);
-			if (timeA === null && timeB === null) return 0;
-			if (timeA === null) return 1;
-			if (timeB === null) return -1;
-			return timeA - timeB;
-		});
-		return { allDayTasks: allDay, timedTasks: timed };
-	}, [todayTasks]);
-
-	// 按时段分组
-	const hourGroups = useMemo(() => {
-		const groups = new Map<number, GCTask[]>();
-		for (const task of timedTasks) {
-			const time = getTaskTime(task);
-			if (time === null) continue;
-			const hour = Math.floor(time / 60);
-			if (!groups.has(hour)) groups.set(hour, []);
-			groups.get(hour)!.push(task);
+		segments.sort((a, b) => a.seg.topMinutes - b.seg.topMinutes);
+		const hourGroups = new Map<number, TimedTaskSegment[]>();
+		for (const item of segments) {
+			const list = hourGroups.get(item.seg.slotHour);
+			if (list) list.push(item);
+			else hourGroups.set(item.seg.slotHour, [item]);
 		}
-		return groups;
-	}, [timedTasks]);
-
-	const dateFieldName = plugin.settings.dateFilterField || 'dueDate';
+		return { allDayTasks: allDay, segments, hourGroups };
+	}, [todayTasks, dateField, today]);
 
 	// ===== 拖放：时间格 =====
 	const handleSlotDrop = (hour: number, taskId: string): void => {
@@ -99,8 +83,8 @@ export function DailyTimelinePanel(): JSX.Element {
 			try {
 				const newDate = new Date(today);
 				newDate.setHours(hour, 0, 0, 0);
-				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateFieldName]: 'time' };
-				await updateTaskDateField(app, sourceTask, dateFieldName, newDate, plugin.settings.enabledTaskFormats);
+				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateField]: 'time' };
+				await updateTaskDateField(app, sourceTask, dateField, newDate, plugin.settings.enabledTaskFormats);
 				Logger.debug('DailyTimelinePanel', 'Task time updated via drag-drop', { taskId, hour });
 			} catch (error) {
 				Logger.error('DailyTimelinePanel', 'Error updating task time:', error);
@@ -109,7 +93,7 @@ export function DailyTimelinePanel(): JSX.Element {
 		})();
 	};
 
-	// ===== 拖放：全天区域 =====
+	// ===== 拖放：全天区�?=====
 	const handleAllDayDrop = (taskId: string): void => {
 		const [filePath, lineNum] = taskId.split(':');
 		const lineNumber = parseInt(lineNum, 10);
@@ -118,8 +102,8 @@ export function DailyTimelinePanel(): JSX.Element {
 
 		void (async () => {
 			try {
-				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateFieldName]: 'day' };
-				await updateTaskDateField(app, sourceTask, dateFieldName, today, plugin.settings.enabledTaskFormats);
+				sourceTask.datePrecision = { ...sourceTask.datePrecision, [dateField]: 'day' };
+				await updateTaskDateField(app, sourceTask, dateField, today, plugin.settings.enabledTaskFormats);
 				Logger.debug('DailyTimelinePanel', 'Task set to all-day via drag-drop', { taskId });
 			} catch (error) {
 				Logger.error('DailyTimelinePanel', 'Error setting task to all-day:', error);
@@ -128,7 +112,7 @@ export function DailyTimelinePanel(): JSX.Element {
 		})();
 	};
 
-	// ===== 当前时间指示线（React 组件化替代 renderCurrentTimeLine） =====
+	// ===== 当前时间指示线（React 组件化替�?renderCurrentTimeLine�?=====
 	const timelineRef = useRef<HTMLDivElement | null>(null);
 	const [currentLineTop, setCurrentLineTop] = useState<number | null>(null);
 
@@ -153,7 +137,7 @@ export function DailyTimelinePanel(): JSX.Element {
 		update();
 		const interval = window.setInterval(update, 60000);
 		return () => window.clearInterval(interval);
-	}, [timelineRef, allDayTasks, timedTasks]);
+	}, [timelineRef, timelineData]);
 
 	// ===== 渲染 =====
 	const weekdayNames = i18n.t('sidebar.dailyTimeline.weekdays') as unknown as string[];
@@ -164,18 +148,18 @@ export function DailyTimelinePanel(): JSX.Element {
 				{`${formatDate(today, 'MM/dd')} ${weekdayNames[today.getDay()]}`}
 			</div>
 
-			{allDayTasks.length === 0 && timedTasks.length === 0 ? (
+			{timelineData.allDayTasks.length === 0 && timelineData.segments.length === 0 ? (
 				<div className={SidebarClasses.elements.emptyState}>
 					{i18n.t('sidebar.dailyTimeline.noTasks')}
 				</div>
 			) : null}
 
-			{/* 全天区域（始终渲染为拖放目标） */}
+			{/* 全天区域（始终渲染为拖放目标�?*/}
 			<AllDayDropZone
 				onDropTask={handleAllDayDrop}
 				renderTasks={(onCardClick) => (
 					<>
-						{allDayTasks.map((task) => (
+						{timelineData.allDayTasks.map((task) => (
 							<TaskCard
 								key={`${task.filePath}:${task.lineNumber}`}
 								task={task}
@@ -188,10 +172,16 @@ export function DailyTimelinePanel(): JSX.Element {
 				openFile={(task) => void openFileInExistingLeaf(app, task.filePath, task.lineNumber)}
 			/>
 
-			{/* 时段时间线 */}
+			{/* 时段时间�?*/}
 			<div ref={timelineRef} className={SidebarClasses.elements.timeline} style={{ position: 'relative' }}>
 				{Array.from({ length: 24 }, (_, hour) => {
-					const hourTasks = hourGroups.get(hour) || [];
+					const hourTasks = timelineData.hourGroups.get(hour) || [];
+					// 本格是否被其他贴片纵向覆盖（覆盖时隐藏快速创建按钮）
+					const coveredBySegment = timelineData.segments.some((s) =>
+						s.seg.slotHour !== hour &&
+						s.seg.topMinutes < (hour + 1) * 60 &&
+						s.seg.bottomMinutes > hour * 60
+					);
 					const now = new Date();
 					const isCurrentHour = now.getHours() === hour && isTodayInTimezone(today);
 					return (
@@ -199,7 +189,8 @@ export function DailyTimelinePanel(): JSX.Element {
 							key={hour}
 							hour={hour}
 							isCurrentHour={isCurrentHour}
-							tasks={hourTasks}
+							segments={hourTasks}
+							showCreate={hourTasks.length === 0 && !coveredBySegment}
 							config={config}
 							onDropTask={(taskId) => handleSlotDrop(hour, taskId)}
 							onCreateTask={() => {
@@ -228,14 +219,15 @@ export function DailyTimelinePanel(): JSX.Element {
 interface TimeSlotProps {
 	hour: number;
 	isCurrentHour: boolean;
-	tasks: GCTask[];
+	segments: TimedTaskSegment[];
+	showCreate: boolean;
 	config: ReturnType<typeof buildSidebarConfig>;
 	onDropTask: (taskId: string) => void;
 	onCreateTask: () => void;
 	openFile: (task: GCTask) => void;
 }
 
-function TimeSlot({ hour, isCurrentHour, tasks, config, onDropTask, onCreateTask, openFile }: TimeSlotProps): JSX.Element {
+function TimeSlot({ hour, isCurrentHour, segments, showCreate, config, onDropTask, onCreateTask, openFile }: TimeSlotProps): JSX.Element {
 	const dropProps = useDropTarget({
 		onDrop: (taskId) => onDropTask(taskId),
 		activeClass: 'gc-sidebar__time-slot--drag-over',
@@ -251,20 +243,28 @@ function TimeSlot({ hour, isCurrentHour, tasks, config, onDropTask, onCreateTask
 			<div className={SidebarClasses.elements.timelineTimeLabel}>
 				{`${String(hour).padStart(2, '0')}:00`}
 			</div>
-			{tasks.length > 0 ? (
+			{segments.length > 0 ? (
 				<div className={SidebarClasses.elements.timelineTimeTasks}>
-					{tasks.map((task) => (
-						<TaskCard
+					{segments.map(({ task, seg }) => (
+						<div
 							key={`${task.filePath}:${task.lineNumber}`}
-							task={task}
-							config={config}
-							onClick={openFile}
-						/>
+							className={SidebarClasses.elements.timelineTimeSpan}
+							style={{
+								marginTop: `calc(var(--gc-tl-slot-h) * ${(seg.offsetMinutes / 60).toFixed(4)})`,
+								height: `calc(var(--gc-tl-slot-h) * ${(seg.durationMinutes / 60).toFixed(4)})`,
+							}}
+						>
+							<TaskCard
+								task={task}
+								config={config}
+								onClick={openFile}
+							/>
+						</div>
 					))}
 				</div>
-			) : (
+			) : showCreate ? (
 				<SlotCreateButton onCreateTask={onCreateTask} />
-			)}
+			) : null}
 		</div>
 	);
 }

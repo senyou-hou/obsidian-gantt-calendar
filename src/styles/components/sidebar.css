@@ -224,12 +224,13 @@
 	position: relative;
 }
 
-/* 时间轴固定行高：由 --gc-tl-cards-per-slot × --gc-tl-card-h 驱动 */
+/* 时间轴固定行高：由 --gc-tl-cards-per-slot × --gc-tl-card-h 驱动
+   overflow 必须为 visible：跨小时的任务贴片从起始格向下延伸，超出本格边界绘制 */
 .gc-sidebar__timeline-time-slot {
 	display: flex;
 	gap: 8px;
 	height: var(--gc-tl-slot-h);
-	overflow: hidden;
+	overflow: visible;
 	border-top: 1px solid var(--background-modifier-border);
 	position: relative;
 }
@@ -253,7 +254,19 @@
 	flex-direction: column;
 	gap: var(--gc-tl-card-gap);
 	min-width: 0;
-	overflow: hidden;
+	overflow: visible;
+}
+
+/* 跨小时贴片宿主：由行内样式按分钟粒度设置 marginTop/height（--gc-tl-slot-h 的分数），
+   z-index 使贴片绘制在后续时间格边框之上 */
+.gc-sidebar__timeline-time-span {
+	position: relative;
+	z-index: 2;
+	min-height: var(--gc-tl-card-h);
+}
+
+.gc-sidebar__timeline-time-span .gc-task-card {
+	height: 100%;
 }
 
 /* 当前时间指示线 */
