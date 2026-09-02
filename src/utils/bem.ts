@@ -147,6 +147,7 @@ export const TaskCardClasses = {
 		dayView: bem(BLOCKS.TASK_CARD, undefined, 'day'),
 		taskView: bem(BLOCKS.TASK_CARD, undefined, 'task'),
 		ganttView: bem(BLOCKS.TASK_CARD, undefined, 'gantt'),
+		sidebarView: bem(BLOCKS.TASK_CARD, undefined, 'sidebar'),
 		// 状态修饰符
 		completed: bem(BLOCKS.TASK_CARD, undefined, 'completed'),
 		pending: bem(BLOCKS.TASK_CARD, undefined, 'pending'),
