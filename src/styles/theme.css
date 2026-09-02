@@ -28,6 +28,18 @@
 	border-left-color: var(--gc-task-pending);
 }
 
+/* Sidebar 每日时间线（时段贴片 + 全天条） */
+.gc-sidebar__timeline-time-tasks .gc-task-card--sidebar.gc-task-card--completed,
+.gc-sidebar__timeline-allday-tasks .gc-task-card--sidebar.gc-task-card--completed {
+	opacity: 0.65;
+	border-left-color: var(--gc-task-completed);
+}
+
+.gc-sidebar__timeline-time-tasks .gc-task-card--sidebar.gc-task-card--pending,
+.gc-sidebar__timeline-allday-tasks .gc-task-card--sidebar.gc-task-card--pending {
+	border-left-color: var(--gc-task-pending);
+}
+
 
 /* Week View */
 .gc-week-view__tasks-grid .gc-task-card--week.gc-task-card--completed {
