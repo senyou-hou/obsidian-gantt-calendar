@@ -258,10 +258,12 @@
 }
 
 /* 跨小时贴片宿主：由行内样式按分钟粒度设置 marginTop/height（--gc-tl-slot-h 的分数），
-   z-index 使贴片绘制在后续时间格边框之上 */
+   z-index 使贴片绘制在后续时间格边框之上；
+   flex: 0 0 auto 禁止 flex-shrink——否则 .timeline-time-tasks(flex:1) 会把跨行贴片压回单格 */
 .gc-sidebar__timeline-time-span {
 	position: relative;
 	z-index: 2;
+	flex: 0 0 auto;
 	min-height: var(--gc-tl-card-h);
 }
 
