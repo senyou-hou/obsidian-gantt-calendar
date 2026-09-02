@@ -89,7 +89,7 @@
 .gc-day-view__time-slot {
 	display: flex;
 	height: var(--gc-tl-slot-h);
-	overflow: hidden;
+	overflow: visible;
 	border-top: 1px solid var(--background-modifier-border);
 	position: relative;
 }
@@ -114,7 +114,19 @@
 	flex-direction: column;
 	gap: var(--gc-tl-card-gap);
 	min-height: 0;
-	overflow: hidden;
+	overflow: visible;
+}
+
+/* 跨小时贴片宿主：由行内样式按分钟粒度设置 marginTop/height（--gc-tl-slot-h 的分数），
+   z-index 使贴片绘制在后续时间格边框之上 */
+.gc-day-view__time-span {
+	position: relative;
+	z-index: 2;
+	min-height: var(--gc-tl-card-h);
+}
+
+.gc-day-view__time-span .gc-task-card {
+	height: 100%;
 }
 
 .gc-day-view__time-slot--drag-over {

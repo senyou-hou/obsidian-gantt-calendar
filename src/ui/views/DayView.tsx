@@ -4,13 +4,13 @@ import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 
 import { Notice } from 'obsidian';
 import type { Component } from 'obsidian';
 import type { GCTask } from '../../types';
-import { getTaskDateField } from '../../types';
 import type { DailyNoteIndex } from '../../utils/dailyNoteSettingsBridge';
 import { DayViewClasses, EmbeddedEditorClasses, withModifiers } from '../../utils/bem';
 import { DayViewConfig } from '../../components/TaskCard';
 import { usePlugin, useApp } from '../pluginContext';
 import { useCalendarStore, selectViewFilter } from '../store/calendarStore';
 import { applyStatusFilter, applyTagFilter, applySort } from '../utils/taskFilters';
+import { getTaskTimeWindow, windowCoversDay, computeDaySegment, type TimedTaskSegment } from '../utils/taskTimeline';
 import { TaskCard } from '../components/TaskCard';
 import { Icon } from '../components/Icon';
 import { useDropTarget } from '../utils/useDragAndDrop';
@@ -52,18 +52,9 @@ export function DayView(): JSX.Element {
 		return d;
 	}, [currentDate]);
 
-	// ===== 任务数据（保持原日视图分片逻辑） =====
-	const dayTasks = useMemo(() => {
+	// ===== 任务数据（时间窗口覆盖 + 分钟级贴片定位） =====
+	const dayData = useMemo(() => {
 		const scoped = applySort(applyTagFilter(applyStatusFilter(tasks, filter.status), filter.tag), filter.sort);
-		const real: GCTask[] = [];
-		for (const task of scoped) {
-			const dateValue = getTaskDateField(task, dateField);
-			if (!dateValue) continue;
-			const taskDate = new Date(dateValue);
-			if (isNaN(taskDate.getTime())) continue;
-			taskDate.setHours(0, 0, 0, 0);
-			if (taskDate.getTime() === normalized.getTime()) real.push(task);
-		}
 		const virtualInstances = generateVirtualInstances(
 			scoped,
 			normalized,
@@ -71,40 +62,35 @@ export function DayView(): JSX.Element {
 			dateField,
 			plugin.settings.recurringTaskDisplayLimit ?? 5
 		);
-		const sorted = sortTasks([...real, ...virtualInstances], filter.sort);
+		const combined = sortTasks([...scoped, ...virtualInstances], filter.sort);
 		const allday: GCTask[] = [];
-		const timed: GCTask[] = [];
-		for (const task of sorted) {
-			if (task.datePrecision?.[dateField] === 'time') timed.push(task);
-			else allday.push(task);
-		}
-		return { sorted, allday, timed, hasTimed: timed.length > 0 };
-	}, [tasks, filter, normalized, dateField, plugin.settings.recurringTaskDisplayLimit]);
-
-	// ===== 时间轴：按小时分组（全天任务作为 0 时） =====
-	const tasksByHour = useMemo(() => {
-		const map = new Map<number, GCTask[]>();
-		for (const task of dayTasks.allday) {
-			if (!map.has(0)) map.set(0, []);
-			map.get(0)!.push(task);
-		}
-		for (const task of dayTasks.timed) {
-			const val = getTaskDateField(task, dateField);
-			if (val instanceof Date) {
-				const hour = val.getHours();
-				if (!map.has(hour)) map.set(hour, []);
-				map.get(hour)!.push(task);
+		const segments: TimedTaskSegment[] = [];
+		for (const task of combined) {
+			const win = getTaskTimeWindow(task, dateField);
+			if (!win || !windowCoversDay(win, normalized)) continue;
+			if (win.isAllday) {
+				allday.push(task);
+				continue;
 			}
+			const seg = computeDaySegment(win, normalized);
+			if (seg) segments.push({ task, seg });
 		}
-		return map;
-	}, [dayTasks, dateField]);
+		segments.sort((a, b) => a.seg.topMinutes - b.seg.topMinutes);
+		const byHour = new Map<number, TimedTaskSegment[]>();
+		for (const item of segments) {
+			const list = byHour.get(item.seg.slotHour);
+			if (list) list.push(item);
+			else byHour.set(item.seg.slotHour, [item]);
+		}
+		return { allday, segments, byHour, hasTimed: segments.length > 0 };
+	}, [tasks, filter, normalized, dateField, plugin.settings.recurringTaskDisplayLimit]);
 
 	// ===== 当前时间指示线 =====
 	const timeGridRef = useRef<HTMLDivElement | null>(null);
 	const [currentLineTop, setCurrentLineTop] = useState<number | null>(null);
 
 	const updateCurrentLine = useCallback(() => {
-		if (!dayTasks.hasTimed || !isTodayInTimezone(normalized)) {
+		if (!dayData.hasTimed || !isTodayInTimezone(normalized)) {
 			setCurrentLineTop(null);
 			return;
 		}
@@ -121,7 +107,7 @@ export function DayView(): JSX.Element {
 		const slotHeight = slot.offsetHeight;
 		const minuteOffset = (new Date().getMinutes() / 60) * slotHeight;
 		setCurrentLineTop(slotTop + minuteOffset);
-	}, [dayTasks.hasTimed, normalized]);
+	}, [dayData.hasTimed, normalized]);
 
 	useLayoutEffect(updateCurrentLine, [updateCurrentLine]);
 
@@ -271,12 +257,34 @@ export function DayView(): JSX.Element {
 
 	// ===== 任务列表渲染（时间轴 / 列表） =====
 	const renderTaskList = (): JSX.Element => {
-		if (dayTasks.hasTimed) {
+		if (dayData.hasTimed) {
 			return (
 				<div className={DayViewClasses.elements.timeline}>
+					{dayData.allday.length > 0 ? (
+						<div className={DayViewClasses.elements.alldaySection}>
+							<div className={DayViewClasses.elements.alldayLabel}>{i18n.t('views.weekView.allDay')}</div>
+							<div className={DayViewClasses.elements.alldayTasks}>
+								{dayData.allday.map((t) => (
+									<TaskCard
+										key={taskKey(t)}
+										task={t}
+										config={timelineConfig}
+										targetDate={normalized}
+										onRefresh={handleCardRefresh}
+									/>
+								))}
+							</div>
+						</div>
+					) : null}
 					<div ref={timeGridRef} className={DayViewClasses.elements.timeGrid}>
 						{Array.from({ length: 24 }, (_, h) => {
-							const hourTasks = tasksByHour.get(h) || [];
+							const hourSegments = dayData.byHour.get(h) || [];
+							// 本格是否被其他贴片纵向覆盖（覆盖时隐藏快速创建按钮）
+							const coveredBySegment = dayData.segments.some((s) =>
+								s.seg.slotHour !== h &&
+								s.seg.topMinutes < (h + 1) * 60 &&
+								s.seg.bottomMinutes > h * 60
+							);
 							return (
 								<div
 									key={h}
@@ -287,17 +295,25 @@ export function DayView(): JSX.Element {
 										{`${String(h).padStart(2, '0')}:00`}
 									</div>
 									<div className={DayViewClasses.elements.timeTasks}>
-										{hourTasks.map((t) => (
-											<TaskCard
-												key={taskKey(t)}
-												task={t}
-												config={timelineConfig}
-												targetDate={normalized}
-												onRefresh={handleCardRefresh}
-											/>
+										{hourSegments.map(({ task, seg }) => (
+											<div
+												key={taskKey(task)}
+												className={DayViewClasses.elements.timeSpan}
+												style={{
+													marginTop: `calc(var(--gc-tl-slot-h) * ${(seg.offsetMinutes / 60).toFixed(4)})`,
+													height: `calc(var(--gc-tl-slot-h) * ${(seg.durationMinutes / 60).toFixed(4)})`,
+												}}
+											>
+												<TaskCard
+													task={task}
+													config={timelineConfig}
+													targetDate={normalized}
+													onRefresh={handleCardRefresh}
+												/>
+											</div>
 										))}
 									</div>
-									{hourTasks.length === 0 ? (
+									{hourSegments.length === 0 && !coveredBySegment ? (
 										<div
 											className={DayViewClasses.elements.slotCreate}
 											role="button"
@@ -327,22 +343,25 @@ export function DayView(): JSX.Element {
 			);
 		}
 
-		if (dayTasks.sorted.length === 0) {
+		if (dayData.allday.length === 0) {
 			return <div className="gantt-task-empty">{i18n.t('common.noTasks')}</div>;
 		}
 
 		return (
-			<>
-				{dayTasks.sorted.map((t) => (
-					<TaskCard
-						key={taskKey(t)}
-						task={t}
-						config={config}
-						targetDate={normalized}
-						onRefresh={handleCardRefresh}
-					/>
-				))}
-			</>
+			<div className={DayViewClasses.elements.alldaySection}>
+				<div className={DayViewClasses.elements.alldayLabel}>{i18n.t('views.weekView.allDay')}</div>
+				<div className={DayViewClasses.elements.alldayTasks}>
+					{dayData.allday.map((t) => (
+						<TaskCard
+							key={taskKey(t)}
+							task={t}
+							config={config}
+							targetDate={normalized}
+							onRefresh={handleCardRefresh}
+						/>
+					))}
+				</div>
+			</div>
 		);
 	};
 

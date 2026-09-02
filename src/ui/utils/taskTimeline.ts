@@ -136,3 +136,9 @@ function buildSegment(topMinutes: number, bottomMinutes: number): DaySegment {
 	const isSpanning = bottomMinutes > (slotHour + 1) * MINUTES_PER_HOUR;
 	return { topMinutes, bottomMinutes, slotHour, offsetMinutes, durationMinutes, isSpanning };
 }
+
+/** 视图渲染用的“任务 + 单日贴片”组合 */
+export interface TimedTaskSegment {
+	task: GCTask;
+	seg: DaySegment;
+}

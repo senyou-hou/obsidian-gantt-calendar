@@ -335,6 +335,7 @@ export const DayViewClasses = {
 			timeSlot: bem(BLOCKS.DAY_VIEW, 'time-slot'),
 			timeLabel: bem(BLOCKS.DAY_VIEW, 'time-label'),
 			timeTasks: bem(BLOCKS.DAY_VIEW, 'time-tasks'),
+			timeSpan: bem(BLOCKS.DAY_VIEW, 'time-span'),
 			currentTimeLine: bem(BLOCKS.DAY_VIEW, 'timeline-current-time'),
 			slotCreate: bem(BLOCKS.DAY_VIEW, 'slot-create'),
 	},
